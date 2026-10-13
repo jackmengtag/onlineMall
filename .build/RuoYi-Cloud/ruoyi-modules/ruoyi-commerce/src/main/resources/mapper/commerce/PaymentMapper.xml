@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.PaymentMapper">
+
+    <resultMap type="Payment" id="PaymentResult">
+        <id     property="paymentId"         column="payment_id"         />
+        <result property="paymentNo"         column="payment_no"         />
+        <result property="orderId"           column="order_id"           />
+        <result property="provider"          column="provider"           />
+        <result property="providerPaymentId" column="provider_payment_id" />
+        <result property="method"            column="method"             />
+        <result property="amount"            column="amount"             />
+        <result property="currencyCode"      column="currency_code"      />
+        <result property="paymentStatus"     column="payment_status"     />
+        <result property="idempotencyKey"    column="idempotency_key"    />
+        <result property="paidAt"            column="paid_at"            />
+        <result property="expiredAt"         column="expired_at"         />
+        <result property="createdAt"         column="created_at"         />
+        <result property="updatedAt"         column="updated_at"         />
+    </resultMap>
+
+    <sql id="selectPaymentVo">
+        select payment_id, payment_no, order_id, provider, provider_payment_id, method,
+               amount, currency_code, payment_status, idempotency_key, paid_at, expired_at,
+               created_at, updated_at
+        from payments
+    </sql>
+
+    <select id="selectPaymentById" parameterType="Long" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where payment_id = #{paymentId}
+    </select>
+
+    <select id="selectPaymentByNo" parameterType="String" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where payment_no = #{paymentNo} limit 1
+    </select>
+
+    <select id="selectPaymentList" parameterType="Payment" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        <where>
+            <if test="paymentNo != null and paymentNo != ''">and payment_no like concat('%', #{paymentNo}, '%')</if>
+            <if test="orderId != null">and order_id = #{orderId}</if>
+            <if test="provider != null and provider != ''">and provider = #{provider}</if>
+            <if test="paymentStatus != null and paymentStatus != ''">and payment_status = #{paymentStatus}</if>
+        </where>
+        order by payment_id desc
+    </select>
+
+    <insert id="insertPayment" parameterType="Payment" useGeneratedKeys="true" keyProperty="paymentId">
+        insert into payments (
+            payment_no,
+            order_id,
+            provider,
+            <if test="providerPaymentId != null">provider_payment_id,</if>
+            <if test="method != null">method,</if>
+            amount,
+            currency_code,
+            <if test="paymentStatus != null and paymentStatus != ''">payment_status,</if>
+            idempotency_key,
+            <if test="paidAt != null">paid_at,</if>
+            <if test="expiredAt != null">expired_at,</if>
+            created_at
+        ) values (
+            #{paymentNo},
+            #{orderId},
+            #{provider},
+            <if test="providerPaymentId != null">#{providerPaymentId},</if>
+            <if test="method != null">#{method},</if>
+            #{amount},
+            #{currencyCode},
+            <if test="paymentStatus != null and paymentStatus != ''">#{paymentStatus},</if>
+            #{idempotencyKey},
+            <if test="paidAt != null">#{paidAt},</if>
+            <if test="expiredAt != null">#{expiredAt},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updatePayment" parameterType="Payment">
+        update payments
+        <set>
+            <if test="providerPaymentId != null">provider_payment_id = #{providerPaymentId},</if>
+            <if test="method != null">method = #{method},</if>
+            <if test="paymentStatus != null and paymentStatus != ''">payment_status = #{paymentStatus},</if>
+            <if test="paidAt != null">paid_at = #{paidAt},</if>
+            <if test="expiredAt != null">expired_at = #{expiredAt},</if>
+            updated_at = sysdate()
+        </set>
+        where payment_id = #{paymentId}
+    </update>
+
+    <select id="selectPaidAmountByOrderId" parameterType="Long" resultType="Long">
+        select ifnull(sum(amount), 0) from payments
+        where order_id = #{orderId} and payment_status = 'SUCCEEDED'
+    </select>
+
+</mapper>

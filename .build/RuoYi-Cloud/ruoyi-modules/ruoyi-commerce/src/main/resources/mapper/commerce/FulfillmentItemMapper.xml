@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.FulfillmentItemMapper">
+
+    <resultMap type="FulfillmentItem" id="FulfillmentItemResult">
+        <id     property="fulfillmentItemId" column="fulfillment_item_id" />
+        <result property="fulfillmentId"     column="fulfillment_id"      />
+        <result property="orderItemId"       column="order_item_id"       />
+        <result property="quantity"          column="quantity"            />
+        <result property="createdAt"         column="created_at"          />
+    </resultMap>
+
+    <sql id="selectFulfillmentItemVo">
+        select fulfillment_item_id, fulfillment_id, order_item_id, quantity, created_at
+        from fulfillment_items
+    </sql>
+
+    <select id="selectItemsByFulfillmentId" parameterType="Long" resultMap="FulfillmentItemResult">
+        <include refid="selectFulfillmentItemVo"/>
+        where fulfillment_id = #{fulfillmentId}
+        order by fulfillment_item_id asc
+    </select>
+
+    <select id="selectItemsByOrderId" parameterType="Long" resultMap="FulfillmentItemResult">
+        select fi.fulfillment_item_id, fi.fulfillment_id, fi.order_item_id, fi.quantity, fi.created_at
+        from fulfillment_items fi
+        inner join fulfillment_orders fo on fi.fulfillment_id = fo.fulfillment_id
+        where fo.order_id = #{orderId}
+        order by fi.fulfillment_item_id asc
+    </select>
+
+    <insert id="insertFulfillmentItem" parameterType="FulfillmentItem" useGeneratedKeys="true" keyProperty="fulfillmentItemId">
+        insert into fulfillment_items (
+            fulfillment_id,
+            order_item_id,
+            quantity,
+            created_at
+        ) values (
+            #{fulfillmentId},
+            #{orderItemId},
+            #{quantity},
+            sysdate()
+        )
+    </insert>
+
+</mapper>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.InventoryTransactionMapper">
+
+    <resultMap type="InventoryTransaction" id="InventoryTransactionResult">
+        <id     property="transactionId"  column="transaction_id" />
+        <result property="skuId"          column="sku_id"         />
+        <result property="warehouseCode"  column="warehouse_code" />
+        <result property="bizType"        column="biz_type"       />
+        <result property="quantity"       column="quantity"       />
+        <result property="bizNo"          column="biz_no"         />
+        <result property="remark"         column="remark"         />
+        <result property="createdAt"      column="created_at"     />
+    </resultMap>
+
+    <sql id="selectInventoryTransactionVo">
+        select transaction_id, sku_id, warehouse_code, biz_type, quantity, biz_no, remark, created_at
+        from inventory_transaction
+    </sql>
+
+    <select id="selectTransactionList" resultMap="InventoryTransactionResult">
+        <include refid="selectInventoryTransactionVo"/>
+        <where>
+            <if test="skuId != null">and sku_id = #{skuId}</if>
+            <if test="warehouseCode != null and warehouseCode != ''">and warehouse_code = #{warehouseCode}</if>
+        </where>
+        order by transaction_id desc
+    </select>
+
+    <insert id="insertTransaction" parameterType="InventoryTransaction" useGeneratedKeys="true" keyProperty="transactionId">
+        insert into inventory_transaction (
+            <if test="skuId != null">sku_id,</if>
+            <if test="warehouseCode != null">warehouse_code,</if>
+            <if test="bizType != null">biz_type,</if>
+            <if test="quantity != null">quantity,</if>
+            <if test="bizNo != null">biz_no,</if>
+            <if test="remark != null">remark,</if>
+            created_at
+        ) values (
+            <if test="skuId != null">#{skuId},</if>
+            <if test="warehouseCode != null">#{warehouseCode},</if>
+            <if test="bizType != null">#{bizType},</if>
+            <if test="quantity != null">#{quantity},</if>
+            <if test="bizNo != null">#{bizNo},</if>
+            <if test="remark != null">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+</mapper>

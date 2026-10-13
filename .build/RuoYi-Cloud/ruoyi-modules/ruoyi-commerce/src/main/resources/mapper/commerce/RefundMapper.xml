@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.RefundMapper">
+
+    <resultMap type="Refund" id="RefundResult">
+        <id     property="refundId"          column="refund_id"          />
+        <result property="refundNo"          column="refund_no"          />
+        <result property="orderId"           column="order_id"           />
+        <result property="paymentId"         column="payment_id"         />
+        <result property="amount"            column="amount"             />
+        <result property="currencyCode"      column="currency_code"      />
+        <result property="refundStatus"      column="refund_status"      />
+        <result property="reason"            column="reason"             />
+        <result property="providerRefundId"  column="provider_refund_id" />
+        <result property="requestedAt"       column="requested_at"       />
+        <result property="completedAt"       column="completed_at"       />
+    </resultMap>
+
+    <sql id="selectRefundVo">
+        select refund_id, refund_no, order_id, payment_id, amount, currency_code,
+               refund_status, reason, provider_refund_id, requested_at, completed_at
+        from refunds
+    </sql>
+
+    <select id="selectRefundById" parameterType="Long" resultMap="RefundResult">
+        <include refid="selectRefundVo"/>
+        where refund_id = #{refundId}
+    </select>
+
+    <select id="selectRefundList" parameterType="Refund" resultMap="RefundResult">
+        <include refid="selectRefundVo"/>
+        <where>
+            <if test="refundNo != null and refundNo != ''">and refund_no like concat('%', #{refundNo}, '%')</if>
+            <if test="orderId != null">and order_id = #{orderId}</if>
+            <if test="paymentId != null">and payment_id = #{paymentId}</if>
+            <if test="refundStatus != null and refundStatus != ''">and refund_status = #{refundStatus}</if>
+        </where>
+        order by refund_id desc
+    </select>
+
+    <insert id="insertRefund" parameterType="Refund" useGeneratedKeys="true" keyProperty="refundId">
+        insert into refunds (
+            refund_no,
+            order_id,
+            <if test="paymentId != null">payment_id,</if>
+            amount,
+            currency_code,
+            <if test="refundStatus != null and refundStatus != ''">refund_status,</if>
+            <if test="reason != null">reason,</if>
+            <if test="providerRefundId != null">provider_refund_id,</if>
+            <if test="completedAt != null">completed_at,</if>
+            requested_at
+        ) values (
+            #{refundNo},
+            #{orderId},
+            <if test="paymentId != null">#{paymentId},</if>
+            #{amount},
+            #{currencyCode},
+            <if test="refundStatus != null and refundStatus != ''">#{refundStatus},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="providerRefundId != null">#{providerRefundId},</if>
+            <if test="completedAt != null">#{completedAt},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateRefund" parameterType="Refund">
+        update refunds
+        <set>
+            <if test="refundStatus != null and refundStatus != ''">refund_status = #{refundStatus},</if>
+            <if test="providerRefundId != null">provider_refund_id = #{providerRefundId},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="completedAt != null">completed_at = #{completedAt},</if>
+        </set>
+        where refund_id = #{refundId}
+    </update>
+
+    <select id="selectRefundedAmountByOrderId" parameterType="Long" resultType="Long">
+        select ifnull(sum(amount), 0) from refunds
+        where order_id = #{orderId} and refund_status in ('PROCESSING', 'SUCCEEDED')
+    </select>
+
+</mapper>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.CustomerAddressMapper">
+
+    <resultMap type="CustomerAddress" id="CustomerAddressResult">
+        <id     property="addressId"      column="address_id"      />
+        <result property="customerId"     column="customer_id"     />
+        <result property="recipientName"  column="recipient_name"  />
+        <result property="recipientPhone" column="recipient_phone" />
+        <result property="countryCode"    column="country_code"    />
+        <result property="stateCode"      column="state_code"      />
+        <result property="city"           column="city"            />
+        <result property="district"       column="district"        />
+        <result property="addressLine1"   column="address_line1"   />
+        <result property="addressLine2"   column="address_line2"   />
+        <result property="postalCode"     column="postal_code"     />
+        <result property="isDefault"      column="is_default"      />
+        <result property="createdAt"      column="created_at"      />
+        <result property="updatedAt"      column="updated_at"      />
+    </resultMap>
+
+    <sql id="selectCustomerAddressVo">
+        select address_id, customer_id, recipient_name, recipient_phone, country_code, state_code,
+               city, district, address_line1, address_line2, postal_code, is_default, created_at, updated_at
+        from customer_address
+    </sql>
+
+    <select id="selectCustomerAddressById" parameterType="Long" resultMap="CustomerAddressResult">
+        <include refid="selectCustomerAddressVo"/>
+        where address_id = #{addressId}
+    </select>
+
+    <select id="selectAddressByCustomerId" parameterType="Long" resultMap="CustomerAddressResult">
+        <include refid="selectCustomerAddressVo"/>
+        where customer_id = #{customerId}
+        order by is_default desc, address_id desc
+    </select>
+
+    <select id="selectCustomerAddressList" parameterType="CustomerAddress" resultMap="CustomerAddressResult">
+        <include refid="selectCustomerAddressVo"/>
+        <where>
+            <if test="customerId != null">and customer_id = #{customerId}</if>
+            <if test="recipientName != null and recipientName != ''">and recipient_name like concat('%', #{recipientName}, '%')</if>
+            <if test="recipientPhone != null and recipientPhone != ''">and recipient_phone = #{recipientPhone}</if>
+            <if test="countryCode != null and countryCode != ''">and country_code = #{countryCode}</if>
+            <if test="city != null and city != ''">and city like concat('%', #{city}, '%')</if>
+            <if test="postalCode != null and postalCode != ''">and postal_code = #{postalCode}</if>
+            <if test="isDefault != null">and is_default = #{isDefault}</if>
+        </where>
+        order by address_id desc
+    </select>
+
+    <insert id="insertCustomerAddress" parameterType="CustomerAddress" useGeneratedKeys="true" keyProperty="addressId">
+        insert into customer_address (
+            customer_id,
+            recipient_name,
+            <if test="recipientPhone != null">recipient_phone,</if>
+            country_code,
+            <if test="stateCode != null">state_code,</if>
+            city,
+            <if test="district != null">district,</if>
+            address_line1,
+            <if test="addressLine2 != null">address_line2,</if>
+            <if test="postalCode != null">postal_code,</if>
+            <if test="isDefault != null">is_default,</if>
+            created_at
+        ) values (
+            #{customerId},
+            #{recipientName},
+            <if test="recipientPhone != null">#{recipientPhone},</if>
+            #{countryCode},
+            <if test="stateCode != null">#{stateCode},</if>
+            #{city},
+            <if test="district != null">#{district},</if>
+            #{addressLine1},
+            <if test="addressLine2 != null">#{addressLine2},</if>
+            <if test="postalCode != null">#{postalCode},</if>
+            <if test="isDefault != null">#{isDefault},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateCustomerAddress" parameterType="CustomerAddress">
+        update customer_address
+        <set>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="recipientName != null and recipientName != ''">recipient_name = #{recipientName},</if>
+            <if test="recipientPhone != null">recipient_phone = #{recipientPhone},</if>
+            <if test="countryCode != null and countryCode != ''">country_code = #{countryCode},</if>
+            <if test="stateCode != null">state_code = #{stateCode},</if>
+            <if test="city != null and city != ''">city = #{city},</if>
+            <if test="district != null">district = #{district},</if>
+            <if test="addressLine1 != null and addressLine1 != ''">address_line1 = #{addressLine1},</if>
+            <if test="addressLine2 != null">address_line2 = #{addressLine2},</if>
+            <if test="postalCode != null">postal_code = #{postalCode},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            updated_at = sysdate()
+        </set>
+        where address_id = #{addressId}
+    </update>
+
+    <update id="clearDefaultByCustomerId" parameterType="Long">
+        update customer_address set is_default = 0, updated_at = sysdate()
+        where customer_id = #{customerId}
+    </update>
+
+    <delete id="deleteCustomerAddressById" parameterType="Long">
+        delete from customer_address where address_id = #{addressId}
+    </delete>
+
+    <delete id="deleteCustomerAddressByIds" parameterType="Long">
+        delete from customer_address where address_id in
+        <foreach item="addressId" collection="array" open="(" separator="," close=")">
+            #{addressId}
+        </foreach>
+    </delete>
+
+</mapper>
