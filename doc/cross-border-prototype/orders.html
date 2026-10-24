@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的订单 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="orders">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container">
+      <section class="section">
+
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">My Orders</div>
+            <h1 class="h1 mt-8">我的订单</h1>
+          </div>
+          <a class="btn" href="index.html#faq" id="csBtn">联系客服</a>
+        </div>
+
+        <div class="row wrap mb-16" style="gap:10px" id="filters">
+          <button class="chip active" type="button" data-f="all">全部</button>
+          <button class="chip" type="button" data-f="pending">待支付</button>
+          <button class="chip" type="button" data-f="paid">已支付</button>
+          <button class="chip" type="button" data-f="fulfilling">履约中</button>
+          <button class="chip" type="button" data-f="shipping">运输中</button>
+          <button class="chip" type="button" data-f="done">已完成</button>
+          <button class="chip" type="button" data-f="cancelled">已取消</button>
+        </div>
+
+        <div id="orderList"></div>
+
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    /* =====================================================================
+     * 我的订单列表 —— 数据：localStorage[nc_local_orders] + DB.ORDERS（经 API 桩获取）
+     * 复用：FMT.money / UI.badge / UI.imgTag / UI.toast / API.fetchOrders / API.payOrder
+     * ===================================================================== */
+    (function () {
+      var LOCAL_KEY = "nc_local_orders";
+
+      function nowStr() {
+        var d = new Date();
+        function p(n) { return (n < 10 ? "0" : "") + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+      function readLocal() {
+        try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch (e) { return []; }
+      }
+      function writeLocal(arr) {
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(arr)); } catch (e) {}
+      }
+      function channelName(code) {
+        var c = (DB.CHANNELS || []).find(function (x) { return x.code === code; });
+        return c ? c.name : code;
+      }
+
+      var DB_ORDERS = [], LOCAL = [], filter = "all";
+      var FILTERS = {
+        all: null,
+        pending: ["PENDING_PAYMENT", "CREATED"],
+        paid: ["PAID", "CONFIRMED"],
+        fulfilling: ["FULFILLING"],
+        shipping: ["SHIPPED", "IN_TRANSIT"],
+        done: ["DELIVERED", "COMPLETED"],
+        cancelled: ["CANCELLED"]
+      };
+
+      var listEl = document.getElementById("orderList");
+      document.getElementById("csBtn").innerHTML = icon("headphones", { size: 16 }) + "联系客服";
+
+      function merged() {
+        var s = UI.session(), arr = [];
+        LOCAL.filter(function (o) { return !o.userId || !s || o.userId === s.userId; }).forEach(function (o) { arr.push({ o: o, isNew: true }); });
+        if (s && s.email === "emily@example.com") DB_ORDERS.forEach(function (o) { arr.push({ o: o, isNew: false }); });
+        return arr;
+      }
+      function itemCount(o) { return (o.items || []).reduce(function (a, b) { return a + b.qty; }, 0); }
+
+      function itemRow(it, cur) {
+        return '<div class="ocard-item">' +
+          UI.imgTag(it.image, it.name, "", it.name) +
+          '<div>' +
+            '<div style="font-weight:600;font-size:14px">' + FMT.esc(it.name) + "</div>" +
+            '<div class="tiny muted">' + FMT.esc(it.spec || "") + "</div>" +
+          "</div>" +
+          '<div class="text-right">' +
+            '<div class="tiny muted">× ' + it.qty + "</div>" +
+            '<div class="price" style="font-size:13px">' + FMT.money(it.unit * it.qty, cur) + "</div>" +
+          "</div>" +
+        "</div>";
+      }
+
+      function actionsHtml(o) {
+        var s = o.status, out = "";
+        if (s === "PENDING_PAYMENT" || s === "CREATED") {
+          out += '<button class="btn accent sm" type="button" data-pay="' + o.no + '">' + icon("credit-card", { size: 15 }) + "去支付</button>";
+        } else if (s === "PAID" || s === "CONFIRMED" || s === "FULFILLING") {
+          out += '<a class="btn primary sm" href="order.html?no=' + o.no + '">查看详情</a>';
+        } else if (s === "SHIPPED" || s === "IN_TRANSIT") {
+          out += '<a class="btn primary sm" href="order.html?no=' + o.no + '#tracking">' + icon("truck", { size: 15 }) + "查看物流</a>";
+        } else if (s === "DELIVERED" || s === "COMPLETED") {
+          out += '<a class="btn sm" href="order.html?no=' + o.no + '#afs">' + icon("refresh", { size: 15 }) + "申请售后</a>";
+        }
+        out += '<a class="btn ghost sm" href="order.html?no=' + o.no + '">查看详情</a>';
+        return out;
+      }
+
+      function cardHtml(r) {
+        var o = r.o, cur = o.currency || FMT.currency();
+        return '<article class="ocard" data-no="' + FMT.esc(o.no) + '">' +
+          '<div class="ocard-head">' +
+            '<div class="row wrap" style="gap:10px">' +
+              '<span class="mono ono">' + FMT.esc(o.no) + "</span>" +
+              '<span class="meta">下单 ' + FMT.esc(o.placedAt) + "</span>" +
+              '<span class="pill">' + FMT.esc(channelName(o.channel)) + "</span>" +
+              (r.isNew ? '<span class="badge accent">新</span>' : "") +
+            "</div>" +
+            '<div class="row" style="gap:8px">' + UI.badge(DB.ORDER_STATUS, o.status) + "</div>" +
+          "</div>" +
+          '<div class="ocard-body">' + (o.items || []).map(function (it) { return itemRow(it, cur); }).join("") + "</div>" +
+          '<div class="ocard-foot">' +
+            '<div class="row" style="gap:8px">' +
+              '<span class="tiny muted">合计</span>' +
+              '<span class="price">' + FMT.money(o.amounts.total, cur) + "</span>" +
+              '<span class="tiny muted">共 ' + itemCount(o) + " 件</span>" +
+            "</div>" +
+            '<div class="row" style="gap:8px">' + actionsHtml(o) + "</div>" +
+          "</div>" +
+        "</article>";
+      }
+
+      function skeletons(n) {
+        var out = "";
+        for (var i = 0; i < n; i++) {
+          out += '<article class="ocard">' +
+            '<div class="ocard-head"><div class="skel" style="width:200px"></div><div class="skel" style="width:64px;height:22px;border-radius:999px"></div></div>' +
+            '<div class="ocard-body"><div class="row" style="gap:12px">' +
+              '<div class="skel" style="width:60px;height:60px"></div>' +
+              '<div class="stack" style="flex:1;gap:8px"><div class="skel" style="width:55%"></div><div class="skel" style="width:32%"></div></div>' +
+              '<div class="skel" style="width:74px"></div>' +
+            "</div></div>" +
+            '<div class="ocard-foot"><div class="skel" style="width:120px"></div><div class="skel" style="width:220px"></div></div>' +
+          "</article>";
+        }
+        return out;
+      }
+
+      function emptyHtml() {
+        if (filter === "all") {
+          return '<div class="empty"><div class="empty-glyph">' + icon("receipt", { size: 24 }) + "</div>" +
+            "<b>你还没有订单</b>" +
+            '<span class="tiny">挑好商品下单后，这里会显示订单进度与物流轨迹</span>' +
+            '<a class="btn accent sm mt-8" href="index.html#catalog">去选购</a></div>';
+        }
+        return '<div class="empty"><div class="empty-glyph">' + icon("filter", { size: 24 }) + "</div>" +
+          "<b>该状态下暂无订单</b>" +
+          '<span class="tiny">换个状态看看，或查看全部订单</span>' +
+          '<button class="btn sm mt-8" type="button" data-reset>查看全部订单</button></div>';
+      }
+
+      function render() {
+        var f = FILTERS[filter];
+        var rows = merged();
+        if (f) rows = rows.filter(function (r) { return f.indexOf(r.o.status) > -1; });
+        if (!rows.length) { listEl.innerHTML = emptyHtml(); bind(); return; }
+        listEl.innerHTML = rows.map(cardHtml).join("");
+        bind();
+      }
+
+      function bind() {
+        UI.qsa(".ocard", listEl).forEach(function (card) {
+          card.addEventListener("click", function (e) {
+            if (e.target.closest("a,button")) return;
+            location.href = "order.html?no=" + card.getAttribute("data-no");
+          });
+        });
+        UI.qsa("[data-pay]", listEl).forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.preventDefault(); e.stopPropagation();
+            pay(btn.getAttribute("data-pay"), btn);
+          });
+        });
+        var rs = UI.qs("[data-reset]", listEl);
+        if (rs) rs.addEventListener("click", function () { setFilter("all"); });
+      }
+
+      async function pay(no, btn) {
+        var target = null;
+        merged().forEach(function (r) { if (r.o.no === no) target = r.o; });
+        if (!target) return;
+        btn.disabled = true;
+        btn.innerHTML = icon("clock", { size: 15 }) + "支付中…";
+        var res = await API.payOrder(no);
+        if (!res || res.code !== 0) {
+          UI.toast("支付失败，请稍后重试", "error");
+          btn.disabled = false;
+          btn.innerHTML = icon("credit-card", { size: 15 }) + "去支付";
+          return;
+        }
+        target.status = "PAID";
+        target.payStatus = "PAID";
+        target.paidAt = nowStr();
+        if (target.pay && target.pay.length) target.pay[0].status = "SUCCEEDED";
+        var arr = readLocal();
+        var hit = arr.find(function (x) { return x.no === no; });
+        if (hit) {
+          hit.status = "PAID"; hit.payStatus = "PAID"; hit.paidAt = target.paidAt;
+          if (hit.pay && hit.pay.length) hit.pay[0].status = "SUCCEEDED";
+          writeLocal(arr);
+        }
+        UI.toast("支付成功");
+        setTimeout(function () { location.href = "order.html?no=" + no; }, 500);
+      }
+
+      function setFilter(f) {
+        filter = f;
+        UI.qsa("[data-f]").forEach(function (c) {
+          c.classList.toggle("active", c.getAttribute("data-f") === f);
+        });
+        render();
+      }
+
+      async function init() {
+        if (!UI.requireAuth("orders.html")) return;
+        UI.qsa("[data-f]").forEach(function (c) {
+          c.addEventListener("click", function () {
+            var f = c.getAttribute("data-f");
+            if (f !== filter) setFilter(f);
+          });
+        });
+        listEl.innerHTML = skeletons(3);
+        var res = await API.fetchOrders({});
+        if (!res || res.code !== 0) {
+          listEl.innerHTML = '<div class="empty"><div class="empty-glyph">' + icon("alert-triangle", { size: 24 }) + "</div>" +
+            "<b>订单加载失败</b><span class=\"tiny\">请稍后重试</span></div>";
+          UI.toast("订单加载失败", "error");
+          return;
+        }
+        DB_ORDERS = res.data || [];
+        LOCAL = readLocal();
+        setFilter("all");
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

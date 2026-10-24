@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.StorefrontMapper">
+
+    <!-- 默认首个 SKU（用于商品卡片展示申报信息） -->
+    <sql id="firstSkuId">
+        (select k.sku_id from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1)
+    </sql>
+
+    <sql id="spuColumns">
+        s.spu_id as spuId,
+        s.spu_code as spuCode,
+        s.default_name as name,
+        s.name_en as nameEn,
+        s.category_key as category,
+        s.category_name as categoryLabel,
+        s.brand_name as brand,
+        s.default_description as description,
+        s.default_image_url as imageUrl,
+        s.badge as badge,
+        s.status as status,
+        s.rating as rating,
+        s.review_count as reviews,
+        s.sold_count as soldCount,
+        s.tags_json as tagsJson,
+        s.images_json as imagesJson,
+        s.specs_json as specsJson,
+        s.colors_json as colorsJson,
+        s.sizes_json as sizesJson,
+        (select k.sku_code from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as skuCode,
+        (select k.weight_grams from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as weightG,
+        (select k.origin_country_code from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as origin,
+        (select k.hs_code from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as hsCode,
+        (select k.declared_name from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as declaredName,
+        (select k.declared_value_amount from product_sku k where k.spu_id = s.spu_id order by k.sku_id limit 1) as declaredAmount,
+        (select sp.sale_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'USD' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceUsd,
+        (select sp.list_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'USD' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as wasUsd,
+        (select sp.sale_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'EUR' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceEur,
+        (select sp.list_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'EUR' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as wasEur,
+        (select sp.sale_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'CNY' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceCny,
+        (select sp.list_amount from sku_price sp where sp.sku_id = <include refid="firstSkuId"/>
+            and sp.currency_code = 'CNY' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as wasCny
+    </sql>
+
+    <select id="selectCategories" resultType="java.util.LinkedHashMap">
+        select category_key as `key`, category_name as label
+        from product_spu
+        where status = 'ON_SALE' and category_key is not null and category_key != ''
+        group by category_key, category_name
+        order by min(spu_id)
+    </select>
+
+    <select id="selectSpuList" parameterType="map" resultType="java.util.LinkedHashMap">
+        select <include refid="spuColumns"/>
+        from product_spu s
+        where s.status = 'ON_SALE'
+        <if test="category != null and category != '' and category != 'all'">
+            and s.category_key = #{category}
+        </if>
+        <if test="q != null and q != ''">
+            and (s.default_name like concat('%', #{q}, '%')
+                 or s.name_en like concat('%', #{q}, '%')
+                 or s.brand_name like concat('%', #{q}, '%'))
+        </if>
+        order by
+        <choose>
+            <when test="sort == 'price-asc'">priceUsd asc, s.spu_id desc</when>
+            <when test="sort == 'price-desc'">priceUsd desc, s.spu_id desc</when>
+            <when test="sort == 'rating'">s.rating desc, s.spu_id desc</when>
+            <when test="sort == 'sold'">s.sold_count desc, s.spu_id desc</when>
+            <otherwise>s.sold_count desc, s.spu_id desc</otherwise>
+        </choose>
+        limit #{offset}, #{size}
+    </select>
+
+    <select id="countSpu" parameterType="map" resultType="Long">
+        select count(*) from product_spu s
+        where s.status = 'ON_SALE'
+        <if test="category != null and category != '' and category != 'all'">
+            and s.category_key = #{category}
+        </if>
+        <if test="q != null and q != ''">
+            and (s.default_name like concat('%', #{q}, '%')
+                 or s.name_en like concat('%', #{q}, '%')
+                 or s.brand_name like concat('%', #{q}, '%'))
+        </if>
+    </select>
+
+    <select id="selectSpuById" parameterType="Long" resultType="java.util.LinkedHashMap">
+        select <include refid="spuColumns"/>
+        from product_spu s
+        where s.spu_id = #{spuId}
+    </select>
+
+    <select id="selectSkuRows" resultType="java.util.LinkedHashMap">
+        select k.spu_id as spuId,
+               k.sku_id as skuId,
+               k.sku_code as skuCode,
+               k.attributes_json as attributesJson,
+               k.weight_grams as weightG,
+               k.hs_code as hsCode,
+               k.declared_name as declaredName,
+               k.declared_value_amount as declaredAmount,
+               k.status as status,
+               ifnull((select sum(i.total_qty - i.locked_qty) from inventory i where i.sku_id = k.sku_id), 0) as stock,
+               (select sp.sale_amount from sku_price sp where sp.sku_id = k.sku_id
+                    and sp.currency_code = 'USD' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceUsd,
+               (select sp.sale_amount from sku_price sp where sp.sku_id = k.sku_id
+                    and sp.currency_code = 'EUR' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceEur,
+               (select sp.sale_amount from sku_price sp where sp.sku_id = k.sku_id
+                    and sp.currency_code = 'CNY' and sp.status = 'ACTIVE' order by sp.effective_from desc limit 1) as priceCny
+        from product_sku k
+        where k.spu_id in
+        <foreach collection="spuIds" item="spuId" open="(" separator="," close=")">
+            #{spuId}
+        </foreach>
+        order by k.spu_id, k.sku_id
+    </select>
+
+    <select id="selectInventoryRows" resultType="java.util.LinkedHashMap">
+        select k.spu_id as spuId,
+               i.warehouse_code as warehouseCode,
+               ifnull(sum(i.total_qty - i.locked_qty), 0) as available
+        from inventory i
+        inner join product_sku k on k.sku_id = i.sku_id
+        where k.spu_id in
+        <foreach collection="spuIds" item="spuId" open="(" separator="," close=")">
+            #{spuId}
+        </foreach>
+        group by k.spu_id, i.warehouse_code
+        order by k.spu_id, i.warehouse_code
+    </select>
+
+    <select id="selectChannelRows" resultType="java.util.LinkedHashMap">
+        select distinct k.spu_id as spuId,
+               cl.channel_code as channelCode,
+               cl.listing_status as listingStatus
+        from channel_listing cl
+        inner join product_sku k on k.sku_id = cl.sku_id
+        where k.spu_id in
+        <foreach collection="spuIds" item="spuId" open="(" separator="," close=")">
+            #{spuId}
+        </foreach>
+        order by k.spu_id, cl.channel_code
+    </select>
+
+    <select id="selectSkuInfo" parameterType="Long" resultType="java.util.LinkedHashMap">
+        select k.sku_id as skuId,
+               k.sku_code as skuCode,
+               s.default_name as name,
+               s.default_image_url as image,
+               ifnull((select sum(i.total_qty - i.locked_qty) from inventory i where i.sku_id = k.sku_id), 0) as stock,
+               (select sp.currency_code from sku_price sp where sp.sku_id = k.sku_id and sp.status = 'ACTIVE'
+                    order by sp.effective_from desc limit 1) as currencyCode,
+               ifnull((select sp.sale_amount from sku_price sp where sp.sku_id = k.sku_id and sp.status = 'ACTIVE'
+                    order by sp.effective_from desc limit 1), 0) as unitPriceAmount
+        from product_sku k
+        inner join product_spu s on s.spu_id = k.spu_id
+        where k.sku_id = #{skuId}
+    </select>
+
+    <select id="selectOrders" resultType="java.util.LinkedHashMap">
+        select o.order_id as orderId,
+               o.order_no as orderNo,
+               o.shop_id as shopId,
+               o.customer_id as customerId,
+               o.channel_code as channelCode,
+               o.country_code as countryCode,
+               o.currency_code as currencyCode,
+               o.subtotal_amount as subtotalAmount,
+               o.discount_amount as discountAmount,
+               o.shipping_amount as shippingAmount,
+               o.tax_amount as taxAmount,
+               o.total_amount as totalAmount,
+               o.order_status as status,
+               o.payment_status as paymentStatus,
+               o.fulfillment_status as fulfillmentStatus,
+               o.after_sale_status as afterSaleStatus,
+               o.placed_at as placedAt,
+               o.create_time as createTime
+        from orders o
+        where o.customer_id = #{customerId}
+        <if test="status != null and status != '' and status != 'all'">
+            and o.order_status = #{status}
+        </if>
+        order by ifnull(o.placed_at, o.create_time) desc, o.order_id desc
+    </select>
+
+    <select id="selectOrderItems" resultType="java.util.LinkedHashMap">
+        select oi.order_id as orderId,
+               oi.order_item_id as orderItemId,
+               oi.sku_id as skuId,
+               oi.sku_code as skuCode,
+               oi.quantity as quantity,
+               oi.unit_price_amount as unitPriceAmount,
+               oi.line_total_amount as lineTotalAmount,
+               oi.currency_code as currencyCode,
+               sn.product_name as name,
+               sn.image_url as image,
+               sn.attributes_json as attributesJson
+        from order_items oi
+        left join order_item_snapshots sn on sn.order_item_id = oi.order_item_id
+        where oi.order_id in
+        <foreach collection="orderIds" item="orderId" open="(" separator="," close=")">
+            #{orderId}
+        </foreach>
+        order by oi.order_id, oi.order_item_id
+    </select>
+
+    <select id="selectOrderBrief" resultType="java.util.LinkedHashMap">
+        select o.order_id as orderId,
+               o.order_no as orderNo,
+               o.customer_id as customerId,
+               o.currency_code as currencyCode,
+               o.total_amount as totalAmount,
+               o.order_status as status,
+               o.payment_status as paymentStatus,
+               o.after_sale_status as afterSaleStatus
+        from orders o
+        where o.order_no = #{orderNo}
+    </select>
+
+    <select id="selectLatestPayment" parameterType="Long" resultType="java.util.LinkedHashMap">
+        select payment_id as paymentId,
+               payment_no as paymentNo,
+               payment_status as paymentStatus,
+               amount as amount,
+               currency_code as currencyCode
+        from payments
+        where order_id = #{orderId}
+          and payment_status in ('INITIATED', 'PENDING', 'AUTHORIZED')
+        order by payment_id desc
+        limit 1
+    </select>
+
+    <select id="selectCartItemCustomerId" parameterType="Long" resultType="Long">
+        select c.customer_id
+        from cart_item ci
+        inner join cart c on c.cart_id = ci.cart_id
+        where ci.cart_item_id = #{cartItemId}
+    </select>
+
+</mapper>

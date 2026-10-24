@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>商品详情 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="shop">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container">
+
+      <!-- 商品详情（骨架 → PDP / 空态） -->
+      <div id="pdpRoot"></div>
+
+      <!-- 同类商品推荐 -->
+      <section class="section" id="recoSection" hidden>
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">You may also like</div>
+            <h2 class="h2 mt-8">同类商品推荐</h2>
+          </div>
+          <a class="btn ghost sm" href="index.html#catalog">查看全部商品</a>
+        </div>
+        <div class="pgrid stagger" id="pgrid"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var pid = new URLSearchParams(location.search).get("id") || "P001";
+      var state = { p: null, color: 0, size: 0, qty: 1, variants: [] };
+
+      function variant() {
+        return state.variants.find(function (v) { return v.color === state.color && v.size === state.size; });
+      }
+      function available(v) {
+        if (!v || !v.stock) return 0;
+        return Object.keys(v.stock).reduce(function (n, key) { return n + v.stock[key]; }, 0);
+      }
+      function remaining(v) {
+        if (!v || !state.p) return 0;
+        var inCart = Cart.items().filter(function (it) { return it.id === state.p.id && it.spec === specOf(state.p); })
+          .reduce(function (n, it) { return n + it.qty; }, 0);
+        return Math.max(0, available(v) - inCart);
+      }
+      function initVariants(p) {
+        var sizes = Math.max(1, p.sizes.length), count = p.colors.length * sizes;
+        // 原型按组合均分商品库存，余数依次分配，保持各仓库存总量不变。
+        p.colors.forEach(function (_, c) {
+          for (var s = 0; s < sizes; s++) {
+            var index = c * sizes + s, stock = {};
+            Object.keys(p.stock).forEach(function (w) {
+              stock[w] = Math.floor(p.stock[w] / count) + (index < p.stock[w] % count ? 1 : 0);
+            });
+            state.variants.push({ color: c, size: s, sku: index === 0 ? p.sku : p.spu.replace('SPU-', 'SKU-') + '-C' + (c + 1) + '-S' + (s + 1), stock: stock });
+          }
+        });
+        var first = state.variants.find(function (v) { return available(v) > 0; });
+        if (first) { state.color = first.color; state.size = first.size; }
+      }
+      function syncSku() {
+        var p = state.p, v = variant();
+        if (!p || !v) return;
+        var max = remaining(v);
+        state.qty = max ? Math.min(max, Math.max(1, state.qty)) : 1;
+        ['c', 's'].forEach(function (key) {
+          UI.qsa('[data-' + key + ']').forEach(function (b) {
+            var index = Number(b.getAttribute('data-' + key));
+            var selected = index === (key === 'c' ? state.color : state.size);
+            var enabled = state.variants.some(function (item) {
+              return (key === 'c' ? item.color === index : item.color === state.color && item.size === index) && available(item) > 0;
+            });
+            b.classList.toggle('on', selected);
+            b.setAttribute('aria-pressed', String(selected));
+            b.disabled = !enabled;
+            b.style.opacity = enabled ? '1' : '.4';
+            b.title = enabled ? '' : '该规格暂无库存';
+          });
+        });
+        document.getElementById('colorLabel').textContent = p.colors[state.color];
+        if (p.sizes.length) document.getElementById('sizeLabel').textContent = p.sizes[state.size];
+        document.getElementById('skuSummary').textContent = '已选：' + specOf(p) + ' · SKU：' + v.sku + ' · 库存 ' + available(v) + ' 件 · 还可加购 ' + max + ' 件';
+        document.getElementById('skuStock').innerHTML = stockHTML(v);
+        var input = document.getElementById('qtyInput');
+        input.value = state.qty;
+        input.disabled = !max;
+        input.setAttribute('aria-valuemax', max);
+        UI.qsa('[data-q]').forEach(function (b) { b.disabled = !max || (Number(b.dataset.q) < 0 ? state.qty <= 1 : state.qty >= max); });
+        document.getElementById('addBtn').disabled = !max;
+        document.getElementById('buyBtn').disabled = !max;
+      }
+
+      /* ---------- 面包屑 ---------- */
+      function breadcrumb(p) {
+        return '<div class="tiny muted row" style="gap:7px">' +
+          '<a href="index.html">首页</a><span>/</span>' +
+          '<a href="index.html#catalog">商品</a><span>/</span>' +
+          '<span>' + FMT.esc(p.categoryLabel) + "</span></div>";
+      }
+
+      /* ---------- 加载骨架 ---------- */
+      function skeleton() {
+        var thumbs = "";
+        for (var i = 0; i < 4; i++) thumbs += '<div class="skel" style="height:76px;border-radius:var(--r-md)"></div>';
+        return '<section class="section pdp">' +
+          '<div class="pdp-gallery">' +
+            '<div class="pdp-main"><div class="skel" style="width:100%;height:100%;border-radius:0"></div></div>' +
+            '<div class="pdp-thumbs">' + thumbs + "</div>" +
+          "</div>" +
+          '<div class="stack">' +
+            '<div class="skel" style="width:34%"></div>' +
+            '<div class="skel" style="width:80%;height:26px"></div>' +
+            '<div class="skel" style="width:100%;height:74px;border-radius:var(--r-md)"></div>' +
+            '<div class="skel" style="width:70%"></div>' +
+            '<div class="skel" style="width:56%"></div>' +
+            '<div class="skel" style="width:46px;height:38px;border-radius:var(--r-md)"></div>' +
+            '<div class="skel" style="width:100%;height:46px;border-radius:var(--r-md)"></div>' +
+          "</div>" +
+        "</section>";
+      }
+
+      /* ---------- 图库 ---------- */
+      function galleryHTML(p) {
+        return '<div class="pdp-gallery">' +
+          '<div class="pdp-main" id="pdpMain">' + UI.imgTag(p.images[0], p.name, "", p.name) + "</div>" +
+          '<div class="pdp-thumbs" id="pdpThumbs">' +
+            p.images.slice(0, 4).map(function (src, i) {
+              return UI.imgTag(src, p.name + " 视图 " + (i + 1), i === 0 ? "on" : "", p.name);
+            }).join("") +
+          "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 现价 / 原价 / 折扣 ---------- */
+      function priceBoxHTML(p) {
+        var cur = FMT.currency();
+        var now = FMT.priceOf(p, cur);
+        var was = FMT.wasOf(p, cur);
+        var off = was ? Math.round((1 - now / was) * 100) : 0;
+        return '<div class="pdp-pricebox">' +
+          '<span class="now">' + FMT.money(now, cur) + "</span>" +
+          (was ? '<span class="was">' + FMT.money(was, cur) + "</span>" : "") +
+          (off ? '<span class="off">-' + off + "%</span>" : "") +
+          '<span class="spacer"></span>' +
+          '<span class="tiny muted">结算币种 ' + cur + "</span>" +
+        "</div>";
+      }
+
+      /* ---------- 选项（颜色 / 尺码） ---------- */
+      function optHTML(title, key, list, labelId, dataAttr) {
+        var opts = list.map(function (v, i) {
+          return '<button type="button" class="opt' + (i === 0 ? " on" : "") + '" ' + dataAttr + '="' + i + '">' + FMT.esc(v) + "</button>";
+        }).join("");
+        return '<div class="opt-group"><h5>' + title + '：<b id="' + labelId + '">' + FMT.esc(list[0]) + "</b></h5>" +
+          '<div class="opts" id="' + key + '">' + opts + "</div></div>";
+      }
+
+      /* ---------- 多仓库存 ---------- */
+      function stockHTML(p, selected) {
+        var rows = DB.WAREHOUSES.map(function (w) {
+          var n = selected ? selected.stock[w.code] || 0 : p.stock[w.code] || 0;
+          var qty = n > 0 ? (n + " 件") : '<span style="color:var(--danger)">售罄</span>';
+          return '<span class="wh-badge" style="border:1px solid ' + (n > 0 ? "var(--border)" : "var(--danger)") + ';border-radius:var(--r-pill);padding:5px 12px">' +
+            '<i style="background:' + w.color + '"></i>' + FMT.esc(w.name) + " " + qty + "</span>";
+        }).join("");
+        return '<div class="opt-group"><h5>多仓库存（就近履约）</h5><div class="opts">' + rows + "</div></div>";
+      }
+
+      /* ---------- 数量控件 ---------- */
+      function qtyHTML() {
+        return '<div class="qty" id="qtyBox">' +
+          '<button type="button" data-q="-1" aria-label="减少">' + icon("minus", { size: 14 }) + "</button>" +
+          '<input type="text" inputmode="numeric" id="qtyInput" value="' + state.qty + '" aria-label="数量">' +
+          '<button type="button" data-q="1" aria-label="增加">' + icon("plus", { size: 14 }) + "</button>" +
+        "</div>";
+      }
+
+      /* ---------- 右侧信息区 ---------- */
+      function infoHTML(p) {
+        return '<div class="stack">' +
+          breadcrumb(p) +
+          '<div class="eyebrow">' + FMT.esc(p.brand) + "</div>" +
+          '<div class="row wrap" style="gap:14px">' +
+            UI.stars(p.rating) +
+            '<span class="tiny muted">' + p.reviews + " 条评价</span>" +
+            '<span class="tiny muted">已售 ' + FMT.esc(p.sold) + "</span>" +
+            '<span class="badge brand"><i class="dt"></i>' + FMT.esc(p.categoryLabel) + "</span>" +
+          "</div>" +
+          '<h1 class="pdp-title">' + FMT.esc(p.name) + "</h1>" +
+          '<div id="pdpPrice">' + priceBoxHTML(p) + "</div>" +
+          '<div class="row wrap" style="gap:8px">' +
+            p.tags.map(function (t) { return '<span class="pill">' + FMT.esc(t) + "</span>"; }).join("") +
+          "</div>" +
+          optHTML("颜色", "colorOpts", p.colors, "colorLabel", "data-c") +
+          (p.sizes.length ? optHTML("尺码", "sizeOpts", p.sizes, "sizeLabel", "data-s") : "") +
+          '<div id="skuSummary" class="tiny muted" role="status" aria-live="polite"></div>' +
+          '<div id="skuStock">' + stockHTML(p) + '</div>' +
+          '<div class="row between wrap" style="margin-top:18px;gap:14px">' +
+            '<div class="row" style="gap:12px"><span class="tiny muted">数量</span>' + qtyHTML() + "</div>" +
+            '<div class="row" style="gap:10px">' +
+              '<button class="btn primary lg" type="button" id="addBtn">' + icon("cart", { size: 17 }) + "加入购物车</button>" +
+              '<button class="btn accent lg" type="button" id="buyBtn">立即购买</button>' +
+            "</div>" +
+          "</div>" +
+          '<div class="tiny muted row" style="gap:8px">' + icon("shield-check", { size: 14 }) + "支持 30 天无理由退货 · 海外仓优先就近发货</div>" +
+        "</div>";
+      }
+
+      /* ---------- 服务承诺 ---------- */
+      function servicesHTML() {
+        var items = [
+          { i: "warehouse", t: "多仓直发", d: "美 / 德 / 新 / 中四仓就近履约" },
+          { i: "truck", t: "全程物流追踪", d: "清关与派送节点实时可见" },
+          { i: "file-text", t: "税费与申报透明", d: "DDP 含税，申报信息可查" },
+          { i: "refresh", t: "30 天无理由退货", d: "验收后 30 天内可申请" }
+        ];
+        return '<section class="section"><div class="grid cols-4 stagger">' +
+          items.map(function (x) {
+            return '<div class="card row" style="gap:12px"><span class="kpi-glyph">' + icon(x.i, { size: 18 }) + "</span>" +
+              "<div><b>" + x.t + '</b><div class="tiny muted">' + x.d + "</div></div></div>";
+          }).join("") +
+        "</div></section>";
+      }
+
+      /* ---------- 描述 / 规格 / 跨境申报 ---------- */
+      function kv(k, v) { return '<div class="kv"><span>' + k + "</span><b>" + v + "</b></div>"; }
+
+      function detailHTML(p) {
+        var specs = Object.keys(p.specs).map(function (k) {
+          return "<div><span>" + FMT.esc(k) + "</span><span>" + FMT.esc(p.specs[k]) + "</span></div>";
+        }).join("");
+        var powered = String(p.badge || "").indexOf("带电") > -1;
+        var weight = p.weightG >= 1000 ? (p.weightG / 1000).toFixed(2) + " kg" : p.weightG + " g";
+        return '<section class="section">' +
+          '<div class="section-head"><div><div class="eyebrow">Details</div><h2 class="h2 mt-8">商品详情</h2></div></div>' +
+          '<div class="grid cols-2" style="align-items:start">' +
+            '<div class="panel"><div class="panel-head"><div class="panel-title">' + icon("file-text", { size: 16 }) + "商品描述与规格参数</div></div>" +
+              '<div class="panel-body">' +
+                '<p class="muted">' + FMT.esc(p.desc) + "</p>" +
+                '<h4 class="h4 mt-16" style="color:var(--text-sub)">规格参数</h4>' +
+                '<div class="spec-list mt-8">' + specs + "</div>" +
+              "</div></div>" +
+            '<div class="panel"><div class="panel-head"><div class="panel-title">' + icon("shield", { size: 16 }) + "跨境申报信息</div></div>" +
+              '<div class="panel-body">' +
+                '<div class="kv-list">' +
+                  kv("原产地", FMT.esc(p.origin === "CN" ? "中国（CN）" : p.origin)) +
+                  kv("HS Code", '<span class="mono">' + FMT.esc(p.hsCode) + "</span>") +
+                  kv("申报品名", FMT.esc(p.declaredName)) +
+                  kv("申报价值（USD）", "$" + p.declaredValue.toFixed(2)) +
+                  kv("重量", weight) +
+                  kv("是否带电 / 危险品", powered
+                    ? '<span class="badge danger"><i class="dt"></i>带电（锂电池）</span>'
+                    : '<span class="badge success"><i class="dt"></i>普通货物</span>') +
+                "</div>" +
+                '<p class="tiny muted mt-12">申报信息用于海关清关，下单时以订单快照为准；DDP 订单由平台承担清关与缴税。</p>' +
+              "</div></div>" +
+          "</div>" +
+        "</section>";
+      }
+
+      /* ================= 渲染 ================= */
+      function render() {
+        var p = state.p;
+        document.title = p.name + " · NovaCross 诺瓦跨境优选";
+        document.getElementById("pdpRoot").innerHTML =
+          '<section class="section pdp">' + galleryHTML(p) + infoHTML(p) + "</section>" +
+          servicesHTML() + detailHTML(p);
+        bindGallery(p);
+        bindInfo(p);
+        syncSku();
+        renderReco(p);
+      }
+
+      function bindGallery(p) {
+        var thumbs = document.getElementById("pdpThumbs");
+        thumbs.addEventListener("click", function (e) {
+          var t = e.target.closest("img");
+          if (!t) return;
+          UI.qsa("img", thumbs).forEach(function (x) { x.classList.remove("on"); });
+          t.classList.add("on");
+          document.getElementById("pdpMain").innerHTML = UI.imgTag(t.getAttribute("src"), p.name, "", p.name);
+        });
+      }
+
+      function bindInfo(p) {
+        var colorOpts = document.getElementById("colorOpts");
+        if (colorOpts) colorOpts.addEventListener("click", function (e) {
+          var b = e.target.closest("[data-c]"); if (!b || b.disabled) return;
+          state.color = parseInt(b.getAttribute("data-c"), 10);
+          if (!available(variant())) {
+            var first = state.variants.find(function (v) { return v.color === state.color && available(v) > 0; });
+            if (first) state.size = first.size;
+          }
+          syncSku();
+        });
+
+        var sizeOpts = document.getElementById("sizeOpts");
+        if (sizeOpts) sizeOpts.addEventListener("click", function (e) {
+          var b = e.target.closest("[data-s]"); if (!b || b.disabled) return;
+          state.size = parseInt(b.getAttribute("data-s"), 10);
+          syncSku();
+        });
+
+        var qtyBox = document.getElementById("qtyBox");
+        var qtyInput = document.getElementById("qtyInput");
+        qtyBox.addEventListener("click", function (e) {
+          var b = e.target.closest("[data-q]"); if (!b) return;
+          state.qty = Math.max(1, state.qty + parseInt(b.getAttribute("data-q"), 10));
+          var max = remaining(variant());
+          state.qty = Math.min(state.qty, max || 1);
+          qtyInput.value = state.qty;
+          syncSku();
+        });
+        qtyInput.addEventListener("input", function () {
+          var v = Number(qtyInput.value);
+          state.qty = Number.isFinite(v) && v >= 1 ? Math.floor(v) : 1;
+          syncSku();
+        });
+        qtyInput.addEventListener("blur", syncSku);
+
+        document.getElementById("addBtn").addEventListener("click", function () { addToCart(p); });
+        document.getElementById("buyBtn").addEventListener("click", function () {
+          if (addToCart(p)) location.href = "cart.html";
+        });
+      }
+
+      function specOf(p) {
+        return p.colors[state.color] + (p.sizes.length ? " / " + p.sizes[state.size] : "");
+      }
+
+      function addToCart(p) {
+        var v = variant(), max = remaining(v);
+        if (!v || !max) { UI.toast("当前 SKU 暂无库存", "error"); return false; }
+        if (state.qty > max) { state.qty = max; syncSku(); }
+        Cart.add(p.id, state.qty, specOf(p));
+        UI.toast("已加入购物车：" + p.name + " · " + specOf(p) + " × " + state.qty);
+        syncSku();
+        return true;
+      }
+
+      /* ---------- 同类推荐 ---------- */
+      function renderReco(p) {
+        var list = DB.PRODUCTS.filter(function (x) { return x.category === p.category && x.id !== p.id; }).slice(0, 4);
+        var sec = document.getElementById("recoSection");
+        if (!list.length) { sec.hidden = true; return; }
+        sec.hidden = false;
+        var grid = document.getElementById("pgrid");
+        grid.innerHTML = list.map(productCard).join("");
+        bindCardActions(grid);
+      }
+
+      /* ---------- 币种切换 ---------- */
+      document.addEventListener("currency:change", function () {
+        if (!state.p) return;
+        document.getElementById("pdpPrice").innerHTML = priceBoxHTML(state.p);
+        renderReco(state.p);
+      });
+
+      /* ================= 启动 ================= */
+      async function boot() {
+        var root = document.getElementById("pdpRoot");
+        root.innerHTML = skeleton();
+        var res = await API.fetchProduct(pid);
+        if (res.code !== 0) {
+          root.innerHTML = '<section class="section"><div class="empty">' +
+            '<div class="empty-glyph">' + icon("alert-triangle", { size: 24 }) + "</div>" +
+            "<b>" + FMT.esc(res.message || "商品不存在") + "</b>" +
+            '<span class="tiny">该商品可能已下架或链接有误</span>' +
+            '<a class="btn primary mt-12" href="index.html">返回首页</a>' +
+          "</div></section>";
+          return;
+        }
+        state.p = res.data;
+        initVariants(state.p);
+        render();
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>

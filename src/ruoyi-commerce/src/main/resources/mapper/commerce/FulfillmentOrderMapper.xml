@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.FulfillmentOrderMapper">
+
+    <resultMap type="FulfillmentOrder" id="FulfillmentOrderResult">
+        <id property="fulfillmentId" column="fulfillment_id"/>
+        <result property="fulfillmentNo" column="fulfillment_no"/>
+        <result property="shopId" column="shop_id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="warehouseCode" column="warehouse_code"/>
+        <result property="fulfillmentStatus" column="fulfillment_status"/>
+        <result property="allocationReason" column="allocation_reason"/>
+        <result property="estimatedShipAt" column="estimated_ship_at"/>
+        <result property="actualShipAt" column="actual_ship_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectList" parameterType="FulfillmentOrder" resultMap="FulfillmentOrderResult">
+        select * from fulfillment_orders
+        <where>
+            <if test="fulfillmentNo != null and fulfillmentNo != ''">and fulfillment_no = #{fulfillmentNo}</if>
+            <if test="orderId != null">and order_id = #{orderId}</if>
+            <if test="warehouseCode != null and warehouseCode != ''">and warehouse_code = #{warehouseCode}</if>
+            <if test="shopId != null">and shop_id = #{shopId}</if>
+            <if test="fulfillmentStatus != null and fulfillmentStatus != ''">and fulfillment_status = #{fulfillmentStatus}</if>
+        </where>
+        order by fulfillment_id desc
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="FulfillmentOrderResult">
+        select * from fulfillment_orders where fulfillment_id = #{fulfillmentId}
+    </select>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="FulfillmentOrderResult">
+        select * from fulfillment_orders where order_id = #{orderId} order by fulfillment_id asc
+    </select>
+
+    <insert id="insertFulfillment" parameterType="FulfillmentOrder" useGeneratedKeys="true" keyProperty="fulfillmentId">
+        insert into fulfillment_orders (fulfillment_no, shop_id, order_id, warehouse_code, fulfillment_status,
+            allocation_reason, estimated_ship_at, create_by, create_time, remark)
+        values (#{fulfillmentNo}, #{shopId}, #{orderId}, #{warehouseCode}, #{fulfillmentStatus},
+            #{allocationReason}, #{estimatedShipAt}, #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updateStatus">
+        update fulfillment_orders
+        set fulfillment_status = #{toStatus},
+            update_by = #{updateBy},
+            update_time = sysdate()
+            <if test='toStatus == "CANCELLED"'>
+            , completed_at = sysdate()
+            </if>
+        where fulfillment_id = #{fulfillmentId}
+        <if test="fromStatus != null and fromStatus != ''">
+            and fulfillment_status = #{fromStatus}
+        </if>
+    </update>
+
+    <update id="updateShipped">
+        update fulfillment_orders
+        set fulfillment_status = 'SHIPPED',
+            actual_ship_at = sysdate(),
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where fulfillment_id = #{fulfillmentId}
+          and fulfillment_status = 'PACKED'
+    </update>
+
+    <update id="updateDelivered">
+        update fulfillment_orders
+        set fulfillment_status = 'DELIVERED',
+            completed_at = sysdate(),
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where fulfillment_id = #{fulfillmentId}
+          and fulfillment_status = 'SHIPPED'
+    </update>
+
+    <select id="countByOrderAndStatus" resultType="int">
+        select count(1) from fulfillment_orders
+        where order_id = #{orderId}
+        <if test="statusList != null and statusList.size() > 0">
+            and fulfillment_status in
+            <foreach collection="statusList" item="status" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+    </select>
+
+</mapper>

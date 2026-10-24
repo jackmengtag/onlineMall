@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.OrderSnapshotMapper">
+
+    <resultMap type="OrderSnapshot" id="OrderSnapshotResult">
+        <id     property="snapshotId"          column="snapshot_id"/>
+        <result property="orderId"             column="order_id"/>
+        <result property="buyerName"           column="buyer_name"/>
+        <result property="buyerEmail"          column="buyer_email"/>
+        <result property="recipientName"       column="recipient_name"/>
+        <result property="recipientPhone"      column="recipient_phone"/>
+        <result property="countryCode"         column="country_code"/>
+        <result property="stateCode"           column="state_code"/>
+        <result property="city"                column="city"/>
+        <result property="district"            column="district"/>
+        <result property="addressLine1"        column="address_line1"/>
+        <result property="addressLine2"        column="address_line2"/>
+        <result property="postalCode"          column="postal_code"/>
+        <result property="taxRuleVersion"      column="tax_rule_version"/>
+        <result property="exchangeRateVersion" column="exchange_rate_version"/>
+        <result property="exchangeRate"        column="exchange_rate"/>
+        <result property="rawAddressJson"      column="raw_address_json"/>
+        <result property="createTime"          column="create_time"/>
+    </resultMap>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="OrderSnapshotResult">
+        select snapshot_id, order_id, buyer_name, buyer_email, recipient_name, recipient_phone, country_code,
+               state_code, city, district, address_line1, address_line2, postal_code, tax_rule_version,
+               exchange_rate_version, exchange_rate, raw_address_json, create_time
+        from order_snapshots
+        where order_id = #{orderId}
+    </select>
+
+    <insert id="insertOrderSnapshot" parameterType="OrderSnapshot" useGeneratedKeys="true" keyProperty="snapshotId">
+        insert into order_snapshots (order_id, buyer_name, buyer_email, recipient_name, recipient_phone,
+            country_code, state_code, city, district, address_line1, address_line2, postal_code,
+            tax_rule_version, exchange_rate_version, exchange_rate, raw_address_json, create_time)
+        values (#{orderId}, #{buyerName}, #{buyerEmail}, #{recipientName}, #{recipientPhone},
+            #{countryCode}, #{stateCode}, #{city}, #{district}, #{addressLine1}, #{addressLine2}, #{postalCode},
+            #{taxRuleVersion}, #{exchangeRateVersion}, #{exchangeRate}, #{rawAddressJson}, sysdate())
+    </insert>
+
+</mapper>

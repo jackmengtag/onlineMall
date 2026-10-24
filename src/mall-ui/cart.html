@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>购物车与结算 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="cart">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container section">
+
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Shopping Cart</div>
+          <h2 class="h2 mt-8">购物车与结算</h2>
+        </div>
+        <a class="btn ghost sm" href="index.html#catalog">继续选购</a>
+      </div>
+
+      <div id="cartRoot"></div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      /* 结算规则与后端保持一致：满 $100 免运费，否则 $5.99；税费 8% 试算 */
+      var FREE_SHIP = 10000;
+      var SHIP_FEE = 599;
+      var TAX_RATE = 0.08;
+      var COUPON_FIXED = { WELCOME10: { amount: 1000, min: 5000, label: "新客立减 $10" } };
+      var COUPON_PERCENT = { SAVE15: { percent: 15, min: 0, label: "全场 85 折" } };
+
+      var mode = "guest";          /* guest | member */
+      var rows = [];               /* 统一行结构 */
+      var defaultAddress = null;
+      var couponApplied = false;
+      var couponCode = "";
+      var submitting = false;
+
+      function loggedIn() { return !!UI.session(); }
+      function totalQty() { return rows.reduce(function (a, b) { return a + b.qty; }, 0); }
+      function rowCurrency() { return rows.length ? (rows[0].currency || FMT.currency()) : FMT.currency(); }
+
+      /* ---------- 数据加载 ---------- */
+      function toMemberRow(it) {
+        return {
+          key: "c" + it.cartItemId,
+          cartItemId: it.cartItemId,
+          skuId: it.skuId,
+          sku: it.skuCode,
+          name: it.name,
+          image: it.image,
+          spec: "",
+          qty: it.quantity,
+          unit: it.unitPriceAmount,
+          currency: it.currencyCode,
+          stock: it.stock
+        };
+      }
+
+      function loadGuestRows() {
+        rows = Cart.detail().map(function (d) {
+          return {
+            key: "g" + d.idx,
+            idx: d.idx,
+            skuId: d.skuId,
+            sku: d.product.sku,
+            name: d.product.name,
+            image: d.product.images[0],
+            spec: d.spec,
+            qty: d.qty,
+            unit: d.unit,
+            currency: d.currency,
+            stock: 0
+          };
+        });
+      }
+
+      async function refreshMemberRows() {
+        var res = await API.fetchCart();
+        rows = (res.data || []).map(toMemberRow);
+        refreshCartBadge();
+      }
+
+      /* 访客购物车 → 登录后同步到后端（仅同步带真实 skuId 的条目） */
+      async function mergeGuestCart() {
+        var guest = Cart.items();
+        var pending = guest.filter(function (x) { return x.skuId; });
+        if (!pending.length) return false;
+        try {
+          for (var i = 0; i < pending.length; i++) {
+            await API.addCart(pending[i].skuId, pending[i].qty);
+          }
+          Cart.clear();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function init() {
+        if (loggedIn()) {
+          mode = "member";
+          var merged = await mergeGuestCart();
+          try { await refreshMemberRows(); } catch (e) { rows = []; UI.toast(e.message || "购物车加载失败", "error"); }
+          if (merged) UI.toast("已将访客购物车同步到账户");
+          try {
+            var ar = await API.fetchAddresses();
+            var list = ar.data || [];
+            defaultAddress = list.find(function (a) { return a.isDefault; }) || list[0] || null;
+          } catch (e) { defaultAddress = null; }
+        } else {
+          mode = "guest";
+          loadGuestRows();
+        }
+        render();
+      }
+
+      /* ---------- 空购物车 ---------- */
+      function emptyHTML() {
+        var tip = mode === "guest"
+          ? '<span class="tiny">当前为访客购物车。登录后可同步购物车并提交订单</span><a class="btn primary mt-12" href="login.html?redirect=cart.html">登录后结算</a>'
+          : '<span class="tiny">挑几件跨境好物，开启全球直送</span><a class="btn primary mt-12" href="index.html">去选购</a>';
+        return '<div class="panel"><div class="panel-body"><div class="empty">' +
+          '<div class="empty-glyph">' + icon("cart", { size: 24 }) + "</div>" +
+          "<b>购物车还是空的</b>" + tip +
+        "</div></div></div>";
+      }
+
+      /* ---------- 单行商品 ---------- */
+      function itemRow(d) {
+        var cur = d.currency || rowCurrency();
+        return '<div class="citem">' +
+          UI.imgTag(d.image, d.name, "citem-img", d.name) +
+          "<div>" +
+            '<div class="citem-name">' + FMT.esc(d.name) + "</div>" +
+            '<div class="citem-spec">' + (d.spec ? FMT.esc(d.spec) : "默认规格") + (d.sku ? " · SKU " + FMT.esc(d.sku) : "") + "</div>" +
+            '<div class="tiny muted mt-8">单价 ' + FMT.money(d.unit, cur) + "</div>" +
+          "</div>" +
+          '<div class="stack" style="align-items:flex-end;gap:10px">' +
+            '<div class="row">' +
+              '<div class="qty">' +
+                '<button type="button" data-q="-1" data-key="' + d.key + '" aria-label="减少">' + icon("minus", { size: 14 }) + "</button>" +
+                '<input type="text" inputmode="numeric" value="' + d.qty + '" data-key="' + d.key + '" aria-label="数量">' +
+                '<button type="button" data-q="1" data-key="' + d.key + '" aria-label="增加">' + icon("plus", { size: 14 }) + "</button>" +
+              "</div>" +
+              '<button class="icon-btn" type="button" data-del="' + d.key + '" title="删除">' + icon("trash", { size: 16 }) + "</button>" +
+            "</div>" +
+            '<div class="num" style="color:var(--accent-600);font-size:15px">' + FMT.money(d.unit * d.qty, cur) + "</div>" +
+          "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 布局 ---------- */
+      function guestBanner() {
+        if (mode === "member") return "";
+        return '<div class="panel mb-16"><div class="panel-body row between wrap" style="gap:12px">' +
+          '<div><b>访客购物车</b><div class="tiny muted mt-8">未登录时商品保存在本地，登录后可同步到账户并提交订单。</div></div>' +
+          '<a class="btn primary sm" href="login.html?redirect=cart.html">去登录</a>' +
+        "</div></div>";
+      }
+
+      function layoutHTML() {
+        return guestBanner() + '<div class="cart-layout">' +
+          '<div class="stack">' +
+            '<div class="panel">' +
+              '<div class="panel-head"><div class="panel-title">' + icon("cart", { size: 16 }) + '商品明细' +
+                '<span class="badge neutral" id="itemCount"><i class="dt"></i>0 件</span></div></div>' +
+              '<div class="panel-body" id="cartItems"></div>' +
+            "</div>" +
+            formPanelHTML() +
+          "</div>" +
+          '<div class="panel summary">' +
+            '<div class="panel-head"><div class="panel-title">' + icon("receipt", { size: 16 }) + "订单摘要</div></div>" +
+            '<div class="panel-body" id="summaryBody"></div>' +
+            '<div class="panel-foot">' +
+              '<button class="btn accent lg block" type="button" id="submitBtn">' + icon("check-circle", { size: 17 }) + "提交订单</button>" +
+            "</div>" +
+          "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 结算表单 ---------- */
+      function field(id, label, type, ph) {
+        return '<div class="field"><label for="' + id + '">' + label + "</label>" +
+          '<input class="input" id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="off">' +
+          '<span class="tiny" style="color:var(--danger);display:none" id="err-' + id + '"></span></div>';
+      }
+      function selectField(id, label, opts) {
+        var o = opts.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + "</option>"; }).join("");
+        return '<div class="field"><label for="' + id + '">' + label + "</label>" +
+          '<select class="select" id="' + id + '">' + o + "</select>" +
+          '<span class="tiny" style="color:var(--danger);display:none" id="err-' + id + '"></span></div>';
+      }
+      function formPanelHTML() {
+        var tip = defaultAddress
+          ? '<span class="tiny muted">已带出默认地址，可在账户中心维护</span>'
+          : '<span class="tiny muted">用于跨境申报与派送</span>';
+        return '<div class="panel">' +
+          '<div class="panel-head"><div class="panel-title">' + icon("map-pin", { size: 16 }) + "收件信息</div>" +
+            tip + "</div>" +
+          '<div class="panel-body">' +
+            '<div class="grid cols-2" style="gap:14px 18px">' +
+              field("fName", "收件人", "text", "如 Alice Chen") +
+              field("fPhone", "联系电话", "text", "如 +1 415-555-0101") +
+              selectField("fCountry", "国家 / 地区", [["US", "美国 United States"], ["DE", "德国 Germany"], ["SG", "新加坡 Singapore"], ["IT", "意大利 Italy"]]) +
+              field("fZip", "邮编", "text", "如 94105") +
+            "</div>" +
+            '<div class="field mt-16"><label for="fAddr">详细地址</label>' +
+              '<textarea class="textarea" id="fAddr" placeholder="街道 / 门牌 / 城市 / 州省，如 1 Market Street, San Francisco, CA"></textarea>' +
+              '<span class="tiny" style="color:var(--danger);display:none" id="err-fAddr"></span></div>' +
+          "</div></div>";
+      }
+
+      function prefillAddress() {
+        if (!defaultAddress) return;
+        var map = {
+          fName: defaultAddress.recipientName,
+          fPhone: defaultAddress.recipientPhone,
+          fCountry: defaultAddress.countryCode,
+          fZip: defaultAddress.postalCode,
+          fAddr: [defaultAddress.addressLine1, defaultAddress.addressLine2, defaultAddress.city, defaultAddress.stateCode]
+            .filter(Boolean).join(", ")
+        };
+        Object.keys(map).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && !el.value && map[id]) el.value = map[id];
+        });
+      }
+
+      /* ---------- 金额计算 ---------- */
+      function couponDiscount(subtotal) {
+        var code = couponCode;
+        var fixed = COUPON_FIXED[code];
+        if (fixed && subtotal >= fixed.min) return fixed.amount;
+        var pct = COUPON_PERCENT[code];
+        if (pct && subtotal >= pct.min) return Math.round(subtotal * pct.percent / 100);
+        return 0;
+      }
+
+      function calc() {
+        var subtotal = rows.reduce(function (a, b) { return a + b.unit * b.qty; }, 0);
+        var shipping = subtotal >= FREE_SHIP ? 0 : SHIP_FEE;
+        var tax = Math.round(subtotal * TAX_RATE);
+        var discount = couponApplied ? couponDiscount(subtotal) : 0;
+        var total = Math.max(0, subtotal - discount + shipping + tax);
+        return { subtotal: subtotal, shipping: shipping, tax: tax, discount: discount, total: total };
+      }
+
+      function sumRow(label, value) {
+        return '<div class="sum-row"><span>' + label + "</span><span>" + value + "</span></div>";
+      }
+
+      /* ---------- 摘要 ---------- */
+      function renderSummary() {
+        var c = calc();
+        var cur = rowCurrency();
+        var codeLabel = COUPON_FIXED[couponCode] ? COUPON_FIXED[couponCode].label : (COUPON_PERCENT[couponCode] ? COUPON_PERCENT[couponCode].label : "");
+        document.getElementById("summaryBody").innerHTML =
+          sumRow("小计（" + totalQty() + " 件）", FMT.money(c.subtotal, cur)) +
+          sumRow(couponApplied && c.discount ? "优惠（" + couponCode + "）" : "优惠", c.discount ? "-" + FMT.money(c.discount, cur) : FMT.money(0, cur)) +
+          sumRow("运费", c.shipping ? FMT.money(c.shipping, cur) : '<span style="color:var(--success)">免运费</span>') +
+          sumRow("税费（8%）", FMT.money(c.tax, cur)) +
+          '<div class="sum-row total"><span>合计</span><b>' + FMT.money(c.total, cur) + "</b></div>" +
+          '<div class="row mt-16" style="gap:8px">' +
+            '<input class="input" id="couponInput" placeholder="优惠券码，如 WELCOME10" value="' + FMT.esc(couponCode) + '" style="flex:1">' +
+            '<button class="btn sm" type="button" id="applyCoupon">应用</button>' +
+          "</div>" +
+          (couponApplied && c.discount ? '<div class="tiny mt-8" style="color:var(--success)">' + icon("check-circle", { size: 13 }) + " 优惠券 " + FMT.esc(codeLabel) + " 已生效</div>" : "") +
+          '<div class="sum-note">结算币种 ' + cur + "，服务端按所选币种重新计价并生成订单快照。<br>" +
+            "运费：小计 ≥ " + FMT.money(FREE_SHIP, cur) + " 免运费，否则 " + FMT.money(SHIP_FEE, cur) + "；税费：按小计 8% 试算。<br>" +
+            "优惠券：WELCOME10 满 " + FMT.money(5000, cur) + " 减 " + FMT.money(1000, cur) + "，SAVE15 全场 85 折，最终金额以服务端结算为准。</div>";
+        bindCoupon();
+      }
+
+      function bindCoupon() {
+        var btn = document.getElementById("applyCoupon");
+        var input = document.getElementById("couponInput");
+        if (!btn || !input) return;
+        btn.addEventListener("click", function () {
+          var code = input.value.trim().toUpperCase();
+          couponCode = code;
+          var subtotal = rows.reduce(function (a, b) { return a + b.unit * b.qty; }, 0);
+          couponApplied = !!code && couponDiscount(subtotal) > 0;
+          if (!code) { couponApplied = false; UI.toast("请输入优惠券码", "error"); }
+          else if (!couponApplied) UI.toast("优惠券码无效或未满足使用门槛", "error");
+          else UI.toast("优惠券 " + code + " 已生效");
+          renderSummary();
+        });
+      }
+
+      /* ---------- 明细 ---------- */
+      function renderItems() {
+        document.getElementById("itemCount").innerHTML = '<i class="dt"></i>' + totalQty() + " 件";
+        document.getElementById("cartItems").innerHTML = rows.map(itemRow).join("");
+      }
+
+      function findRow(key) {
+        return rows.find(function (r) { return r.key === key; });
+      }
+
+      async function changeQty(row, qty) {
+        if (!row) return;
+        var limit = row.stock > 0 ? row.stock : 9999;
+        qty = Math.max(1, Math.min(qty, limit));
+        if (mode === "member") {
+          try {
+            await API.updateCart(row.cartItemId, qty);
+            await refreshMemberRows();
+          } catch (e) { UI.toast(e.message || "更新数量失败", "error"); return; }
+        } else {
+          Cart.setQty(row.idx, qty);
+          loadGuestRows();
+        }
+        render();
+      }
+
+      async function removeRow(row) {
+        if (!row) return;
+        if (mode === "member") {
+          try {
+            await API.removeCart(row.cartItemId);
+            await refreshMemberRows();
+          } catch (e) { UI.toast(e.message || "删除失败", "error"); return; }
+        } else {
+          Cart.remove(row.idx);
+          loadGuestRows();
+        }
+        UI.toast("已移除商品");
+        render();
+      }
+
+      function bindItems() {
+        var wrap = document.getElementById("cartItems");
+        wrap.addEventListener("click", function (e) {
+          var q = e.target.closest("[data-q]");
+          if (q) {
+            var row = findRow(q.getAttribute("data-key"));
+            if (row) changeQty(row, row.qty + parseInt(q.getAttribute("data-q"), 10));
+            return;
+          }
+          var del = e.target.closest("[data-del]");
+          if (del) removeRow(findRow(del.getAttribute("data-del")));
+        });
+        wrap.addEventListener("change", function (e) {
+          var inp = e.target.closest("input[data-key]");
+          if (!inp) return;
+          var row = findRow(inp.getAttribute("data-key"));
+          if (!row) return;
+          var v = parseInt(String(inp.value).replace(/\D/g, ""), 10);
+          changeQty(row, (isNaN(v) || v < 1) ? 1 : v);
+        });
+      }
+
+      /* ---------- 表单校验 ---------- */
+      function bindForm() {
+        ["fName", "fPhone", "fCountry", "fAddr", "fZip"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          ["input", "change"].forEach(function (ev) {
+            el.addEventListener(ev, function () {
+              var err = document.getElementById("err-" + id);
+              if (err) err.style.display = "none";
+              el.style.borderColor = "";
+            });
+          });
+        });
+        document.getElementById("submitBtn").addEventListener("click", submitOrder);
+      }
+
+      function validate() {
+        var rules = [
+          { id: "fName", msg: "请填写收件人姓名" },
+          { id: "fPhone", msg: "请填写有效的联系电话" },
+          { id: "fCountry", msg: "请选择国家 / 地区" },
+          { id: "fAddr", msg: "请填写详细地址" },
+          { id: "fZip", msg: "请填写邮编" }
+        ];
+        var ok = true;
+        rules.forEach(function (r) {
+          var el = document.getElementById(r.id);
+          var err = document.getElementById("err-" + r.id);
+          var val = (el.value || "").trim();
+          var bad = !val || (r.id === "fPhone" && val.replace(/\D/g, "").length < 5);
+          if (bad) { ok = false; err.textContent = r.msg; err.style.display = "block"; el.style.borderColor = "var(--danger)"; }
+          else { err.style.display = "none"; el.style.borderColor = ""; }
+        });
+        if (!ok) UI.toast("请完善收件信息", "error");
+        return ok;
+      }
+
+      /* ---------- 提交订单 ---------- */
+      async function submitOrder() {
+        if (!UI.requireAuth("cart.html")) return;
+        if (submitting) return;
+        if (!rows.length) { UI.toast("购物车为空", "error"); return; }
+        if (!validate()) return;
+
+        var items = rows.map(function (r) { return { skuId: r.skuId, quantity: r.qty }; })
+          .filter(function (x) { return x.skuId != null; });
+        if (!items.length) { UI.toast("购物车商品缺少 SKU 信息，请重新加购", "error"); return; }
+
+        var btn = document.getElementById("submitBtn");
+        var label = btn.innerHTML;
+        submitting = true;
+        btn.disabled = true;
+        btn.textContent = "提交中…";
+
+        try {
+          var res = await API.createOrder({
+            items: items,
+            countryCode: "US",
+            channelCode: "DIRECT",
+            currencyCode: FMT.currency(),
+            addressId: defaultAddress ? defaultAddress.addressId : undefined,
+            couponCode: couponApplied && couponCode ? couponCode : undefined
+          });
+          var orderNo = res.data && res.data.orderNo;
+
+          /* 下单成功后清空当前购物车 */
+          if (mode === "member") {
+            for (var i = 0; i < rows.length; i++) {
+              try { await API.removeCart(rows[i].cartItemId); } catch (e) { /* 忽略清理失败 */ }
+            }
+            refreshCartBadge();
+          } else {
+            Cart.clear();
+          }
+
+          UI.toast("下单成功，订单号 " + (orderNo || ""));
+          setTimeout(function () { location.href = "orders.html"; }, 600);
+        } catch (e) {
+          UI.toast(e.message || "下单失败，请稍后再试", "error");
+          btn.disabled = false;
+          btn.innerHTML = label;
+          submitting = false;
+        }
+      }
+
+      /* ---------- 全量渲染 ---------- */
+      function render() {
+        var root = document.getElementById("cartRoot");
+        if (!rows.length) { root.innerHTML = emptyHTML(); return; }
+        root.innerHTML = layoutHTML();
+        bindItems();
+        bindForm();
+        prefillAddress();
+        renderItems();
+        renderSummary();
+      }
+
+      /* ---------- 币种切换：重算并重渲染金额 ---------- */
+      document.addEventListener("currency:change", function () {
+        if (!rows.length) return;
+        if (mode === "guest") loadGuestRows();
+        render();
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>

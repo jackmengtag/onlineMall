@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>数据与对账 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="reconciliation" data-title="数据与对账" data-crumb="数据 / 数据与对账">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 对账单列表 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" id="reconGlyph"></span>渠道对账单</div>
+          <span class="tiny muted" id="reconCount">加载中…</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar mb-0">
+            <div class="toolbar-left">
+              <select class="select" id="dateFilter" style="width:auto" aria-label="按日期筛选"></select>
+              <select class="select" id="chFilter" style="width:auto" aria-label="按渠道筛选"></select>
+              <select class="select" id="curFilter" style="width:auto" aria-label="按币种筛选">
+                <option value="all">全部币种</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn" id="exportBtn" type="button">导出对账单</button>
+              <button class="btn primary" id="reconBtn" type="button">重新对账</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>对账单号</th><th>日期</th><th>渠道</th><th>币种</th>
+              <th>内部笔数</th><th>平台笔数</th><th class="text-right">平台金额</th>
+              <th class="text-right">差异金额</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="reconRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 库存对账 + 对账趋势 -->
+      <div class="two-col mt-24">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="panel-glyph info" id="invGlyph"></span>库存对账</div>
+            <span class="badge danger" id="invBadge">2 项差异</span>
+          </div>
+          <div class="panel-body">
+            <div class="row between mb-8">
+              <span class="tiny muted">台账与实盘一致率</span>
+              <b class="num">99.6%</b>
+            </div>
+            <div class="bar"><i style="width:99.6%"></i></div>
+
+            <div class="table-wrap mt-16">
+              <table class="table">
+                <thead><tr>
+                  <th>SKU</th><th>仓库</th><th class="text-right">台账数量</th>
+                  <th class="text-right">实际数量</th><th class="text-right">差异</th><th>状态</th>
+                </tr></thead>
+                <tbody id="invRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="panel-glyph accent" id="trendGlyph"></span>对账趋势</div>
+            <span class="tiny muted">近 7 日</span>
+          </div>
+          <div class="panel-body">
+            <div class="chart-bars" id="trendChart"></div>
+            <div class="legend mt-16">
+              <span><i style="background:var(--brand-600)"></i>每日差异笔数</span>
+              <span><i style="background:var(--accent-500)"></i>最新一日</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- 差异详情抽屉 -->
+  <div class="drawer-mask" id="diffMask" onclick="closeDiff()"></div>
+  <div class="drawer" id="diffDrawer">
+    <div class="drawer-head" id="diffHead"></div>
+    <div class="drawer-body" id="diffBody"></div>
+    <div class="drawer-foot" id="diffFoot"></div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var state = { date: "all", channel: "all", currency: "all" };
+      var ALL = [];
+
+      var tbody = document.getElementById("reconRows");
+      var kpiRow = document.getElementById("kpiRow");
+      var reconCount = document.getElementById("reconCount");
+      var reconBtn = document.getElementById("reconBtn");
+
+      document.getElementById("reconGlyph").innerHTML = icon("bar-chart", { size: 16 });
+      document.getElementById("invGlyph").innerHTML = icon("warehouse", { size: 16 });
+      document.getElementById("trendGlyph").innerHTML = icon("trend-up", { size: 16 });
+      document.getElementById("exportBtn").insertAdjacentHTML("afterbegin", icon("download", { size: 16 }));
+      reconBtn.insertAdjacentHTML("afterbegin", icon("refresh", { size: 16 }));
+
+      /* ---- 差异明细（按对账单号构造，逐笔对比） ---- */
+      var DIFF_DETAIL = {
+        "RC-20261012-02": [
+          { type: "平台已扣款，内部未入账", internal: null, platform: "PAY-ADY-20261012-90817", amount: 14633, diff: -14633, note: "渠道结算单晚到，待补录" }
+        ],
+        "RC-20261011-04": [
+          { type: "内部已记录，平台未结算", internal: "NC-20260928-0064", platform: null, amount: 5448, diff: 5448, note: "订单已取消，渠道未退款，待人工核销" }
+        ],
+        "RC-20261009-07": [
+          { type: "笔数差异，待核对", internal: "SH 批次 · 54 笔", platform: null, amount: 0, diff: 0, note: "物流运单回传延迟，核对平台结算笔数" }
+        ]
+      };
+      var SUGGEST = {
+        "RC-20261012-02": [
+          "重新拉取 Adyen 结算账单，补录该笔 €146.33 差异流水；",
+          "若结算单确实晚到，先标记为「待补录」，在次日对账中自动核销。"
+        ],
+        "RC-20261011-04": [
+          "核对已取消订单 NC-20260928-0064 的渠道退款状态；",
+          "发起人工核销并记录调整凭证，冲减差异 $54.48。"
+        ],
+        "RC-20261009-07": [
+          "重新拉取 Ninja Van 运单批次，核对结算笔数；",
+          "确认无误后发起人工核销并记录调整凭证。"
+        ]
+      };
+
+      /* ---- 工具 ---- */
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function kpiCard(label, value, glyph, tone, sub, valueColor) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value"' + (valueColor ? ' style="color:' + valueColor + '"' : "") + ">" + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+      function signedMoney(minor, cur) {
+        return (minor > 0 ? "+" : "-") + FMT.money(Math.abs(minor), cur);
+      }
+      function diffHtml(minor, cur) {
+        if (!minor) return '<span class="muted">—</span>';
+        var color = minor < 0 ? "var(--danger)" : "var(--success)";
+        return '<span class="num" style="color:' + color + '">' + signedMoney(minor, cur) + "</span>";
+      }
+
+      /* ---- 过滤器 ---- */
+      function filtered() {
+        return ALL.filter(function (r) {
+          if (state.date !== "all" && r.date !== state.date) return false;
+          if (state.channel !== "all" && r.channel !== state.channel) return false;
+          if (state.currency !== "all" && r.currency !== state.currency) return false;
+          return true;
+        });
+      }
+
+      /* ---- KPI ---- */
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var diffN = ALL.filter(function (r) { return r.status === "DIFF"; }).length;
+        var pendN = ALL.filter(function (r) { return r.status === "PENDING"; }).length;
+        kpiRow.innerHTML =
+          kpiCard("今日 GMV", "$184,230", "wallet", "", "全渠道成交额") +
+          kpiCard("支付成功率", "96.8%", "percent", "info", "较昨日 -0.4%") +
+          kpiCard("差异笔数", diffN + " 笔", "alert-triangle", "gold", "需人工介入核销", "var(--danger)") +
+          kpiCard("待核对", pendN + " 笔", "clock", "accent", "等待渠道账单回传", "var(--warning)");
+      }
+
+      /* ---- 对账单表格 ---- */
+      function rowHtml(r) {
+        var rowStyle = r.status === "DIFF"
+          ? ' style="background:var(--danger-bg);box-shadow:inset 3px 0 0 var(--danger)"'
+          : r.status === "PENDING"
+            ? ' style="background:var(--warning-bg);box-shadow:inset 3px 0 0 var(--warning)"'
+            : "";
+        var op = r.status === "MATCHED"
+          ? '<button class="btn sm disabled" type="button" disabled>查看差异</button>'
+          : '<button class="btn sm" type="button" onclick="openDiff(\'' + r.id + '\')">查看差异</button>';
+        return "<tr" + rowStyle + ">" +
+          '<td class="mono cell-strong">' + r.id + "</td>" +
+          '<td class="muted tiny nowrap">' + r.date + "</td>" +
+          '<td><span class="pill">' + FMT.esc(r.channel) + "</span></td>" +
+          '<td class="mono">' + r.currency + "</td>" +
+          '<td class="num">' + r.internal + "</td>" +
+          '<td class="num">' + r.platform + "</td>" +
+          '<td class="text-right num">' + FMT.money(r.amount, r.currency) + "</td>" +
+          '<td class="text-right num">' + diffHtml(r.diff, r.currency) + "</td>" +
+          "<td>" + UI.badge(DB.RECON_STATUS, r.status) + "</td>" +
+          "<td>" + op + "</td>" +
+        "</tr>";
+      }
+      function emptyHtml() {
+        var on = state.date !== "all" || state.channel !== "all" || state.currency !== "all";
+        var text = on ? "没有符合当前筛选条件的对账单" : "暂无对账单数据";
+        var sub = on ? "试试调整日期 / 渠道 / 币种筛选" : "渠道账单同步后将自动出现在这里";
+        return '<div class="empty"><div class="empty-glyph">' + icon("receipt", { size: 26 }) + "</div>" +
+          "<b>" + text + '</b><span class="tiny">' + sub + "</span></div>";
+      }
+      function renderTable() {
+        var rows = filtered();
+        var diffN = rows.filter(function (r) { return r.status === "DIFF"; }).length;
+        reconCount.textContent = "共 " + rows.length + " 条 · 差异 " + diffN + " 笔";
+        tbody.innerHTML = rows.length
+          ? rows.map(rowHtml).join("")
+          : '<tr><td colspan="10">' + emptyHtml() + "</td></tr>";
+      }
+
+      /* ---- 初始化加载 ---- */
+      async function load(skeleton) {
+        if (skeleton) {
+          renderKPISkeleton();
+          tbody.innerHTML = skelRows(4, 10);
+        }
+        var res = await API.fetchReconciliation();
+        ALL = res.data;
+        renderKPI();
+        renderTable();
+      }
+
+      /* ---- 抽屉 ---- */
+      function secHead(glyph, title) {
+        return '<div class="row mb-12" style="gap:8px"><span class="panel-glyph">' + icon(glyph, { size: 16 }) +
+          '</span><b class="h4">' + title + "</b></div>";
+      }
+      function detailRow(d, cur) {
+        return "<tr>" +
+          '<td class="cell-strong">' + FMT.esc(d.type) + "</td>" +
+          '<td class="mono">' + (d.internal ? FMT.esc(d.internal) : '<span class="muted">—</span>') + "</td>" +
+          '<td class="mono">' + (d.platform ? FMT.esc(d.platform) : '<span class="muted">—</span>') + "</td>" +
+          '<td class="num">' + (d.amount ? FMT.money(d.amount, cur) : '<span class="muted">—</span>') + "</td>" +
+          '<td class="num">' + diffHtml(d.diff, cur) + "</td>" +
+          '<td class="tiny muted">' + FMT.esc(d.note) + "</td>" +
+        "</tr>";
+      }
+      function renderDrawer(r) {
+        document.getElementById("diffHead").innerHTML =
+          '<div><div class="row" style="gap:10px"><span class="mono cell-strong" style="font-size:14px">' + r.id + "</span>" +
+            UI.badge(DB.RECON_STATUS, r.status) + "</div>" +
+            '<div class="tiny muted mt-8">' + r.date + " · " + FMT.esc(r.channel) + " · " + r.currency + "</div></div>" +
+          '<button class="icon-btn" type="button" onclick="closeDiff()">' + icon("x", { size: 18 }) + "</button>";
+
+        var summary = '<div class="kv-list">' +
+          '<div class="kv"><span>内部笔数 vs 平台笔数</span><b class="num">' + r.internal + " 笔 / " + r.platform + " 笔</b></div>" +
+          '<div class="kv"><span>平台金额</span><b class="num">' + FMT.money(r.amount, r.currency) + "</b></div>" +
+          '<div class="kv"><span>差异金额</span><b class="num">' + diffHtml(r.diff, r.currency) + "</b></div>" +
+        "</div>";
+
+        var details = DIFF_DETAIL[r.id] || [
+          { type: "笔数或金额差异，待核对", internal: "内部 " + r.internal + " 笔", platform: "平台 " + r.platform + " 笔", amount: 0, diff: r.diff, note: "等待渠道账单核对" }
+        ];
+        var detailTable = '<div class="table-wrap"><table class="table"><thead><tr>' +
+          "<th>类型</th><th>内部记录</th><th>平台记录</th><th class=\"text-right\">金额</th><th class=\"text-right\">差异</th><th>说明</th>" +
+          "</tr></thead><tbody>" +
+          details.map(function (d) { return detailRow(d, r.currency); }).join("") +
+          "</tbody></table></div>";
+
+        var sug = SUGGEST[r.id] || ["重新拉取渠道账单并补录差异流水；", "发起人工核销并记录调整凭证。"];
+        var suggest = '<div class="tile">' +
+          '<div class="row" style="gap:8px"><span class="panel-glyph">' + icon("shield-check", { size: 16 }) + '</span><b class="h4">处理建议</b></div>' +
+          '<ul class="stack mt-8" style="gap:6px">' +
+            sug.map(function (s) { return '<li class="tiny muted">· ' + FMT.esc(s) + "</li>"; }).join("") +
+          "</ul>" +
+          '<div class="row mt-12 wrap" style="gap:10px">' +
+            '<button class="btn sm" type="button" onclick="pullBill(\'' + r.id + '\')">' + icon("refresh", { size: 14 }) + "重新拉取账单</button>" +
+            '<button class="btn sm primary" type="button" onclick="markResolved(\'' + r.id + '\')">' + icon("check", { size: 14 }) + "标记为已核销</button>" +
+          "</div>" +
+        "</div>";
+
+        document.getElementById("diffBody").innerHTML =
+          "<div class=\"mb-24\">" + secHead("layers", "对账汇总") + summary + "</div>" +
+          "<div class=\"mb-24\">" + secHead("file-text", "差异明细") + detailTable + "</div>" +
+          '<div class="mb-24">' + suggest + "</div>";
+
+        document.getElementById("diffFoot").innerHTML =
+          '<button class="btn ghost" type="button" onclick="closeDiff()">关闭</button>';
+      }
+      window.openDiff = function (id) {
+        var r = ALL.find(function (x) { return x.id === id; });
+        if (!r || r.status === "MATCHED") return;
+        renderDrawer(r);
+        document.getElementById("diffMask").classList.add("open");
+        UI.openDrawer("diffDrawer");
+      };
+      window.closeDiff = function () {
+        document.getElementById("diffMask").classList.remove("open");
+        UI.closeDrawer("diffDrawer");
+      };
+      window.pullBill = function (id) {
+        UI.toast("已触发重新拉取渠道账单", "info");
+      };
+      window.markResolved = function (id) {
+        var r = DB.RECONCILIATION.find(function (x) { return x.id === id; });
+        if (!r) return;
+        r.status = "MATCHED";
+        r.diff = 0;
+        renderKPI();
+        renderTable();
+        closeDiff();
+        UI.toast("该笔差异已核销");
+      };
+
+      /* ---- 筛选器构建与事件 ---- */
+      function buildFilters() {
+        document.getElementById("dateFilter").innerHTML =
+          '<option value="all">全部日期</option>' +
+          ["2026-10-12", "2026-10-11", "2026-10-10"].map(function (d) {
+            return '<option value="' + d + '">' + d + "</option>";
+          }).join("");
+
+        var chans = [];
+        DB.RECONCILIATION.forEach(function (r) { if (chans.indexOf(r.channel) === -1) chans.push(r.channel); });
+        document.getElementById("chFilter").innerHTML = '<option value="all">全部渠道</option>' +
+          chans.map(function (c) { return '<option value="' + FMT.esc(c) + '">' + FMT.esc(c) + "</option>"; }).join("");
+      }
+
+      document.getElementById("dateFilter").addEventListener("change", function () {
+        state.date = this.value; renderTable();
+      });
+      document.getElementById("chFilter").addEventListener("change", function () {
+        state.channel = this.value; renderTable();
+      });
+      document.getElementById("curFilter").addEventListener("change", function () {
+        state.currency = this.value; renderTable();
+      });
+      document.getElementById("exportBtn").addEventListener("click", function () {
+        UI.toast("对账单已导出 (CSV)", "info");
+      });
+      reconBtn.addEventListener("click", async function () {
+        if (reconBtn.classList.contains("disabled")) return;
+        reconBtn.classList.add("disabled");
+        reconBtn.innerHTML = icon("refresh", { size: 16 }) + "对账中…";
+        await API.fetchReconciliation();
+        reconBtn.classList.remove("disabled");
+        reconBtn.innerHTML = icon("refresh", { size: 16 }) + "重新对账";
+        renderKPI();
+        renderTable();
+        UI.toast("对账完成：发现 2 笔差异", "info");
+      });
+
+      /* ---- 库存对账 ---- */
+      var WH_NAME = {};
+      DB.WAREHOUSES.forEach(function (w) { WH_NAME[w.code] = w.name; });
+      var INV_ROWS = [
+        { sku: "SKU-100288-WH", wh: "DE-FRA", book: 64, actual: 63, diff: -1, status: "DIFF" },
+        { sku: "SKU-100318-CE", wh: "DE-FRA", book: 261, actual: 260, diff: -1, status: "DIFF" }
+      ];
+      document.getElementById("invRows").innerHTML = INV_ROWS.map(function (r) {
+        return "<tr>" +
+          '<td class="mono cell-strong">' + r.sku + "</td>" +
+          "<td>" + FMT.esc(WH_NAME[r.wh] || r.wh) + "</td>" +
+          '<td class="text-right num">' + r.book + "</td>" +
+          '<td class="text-right num">' + r.actual + "</td>" +
+          '<td class="text-right num"><span class="num" style="color:var(--danger)">' + (r.diff > 0 ? "+" : "-") + Math.abs(r.diff) + "</span></td>" +
+          "<td>" + UI.badge(DB.RECON_STATUS, r.status) + "</td>" +
+        "</tr>";
+      }).join("");
+
+      /* ---- 对账趋势（近 7 日差异笔数） ---- */
+      var TREND = [
+        { d: "10/06", v: 0 }, { d: "10/07", v: 1 }, { d: "10/08", v: 0 }, { d: "10/09", v: 2 },
+        { d: "10/10", v: 1 }, { d: "10/11", v: 3 }, { d: "10/12", v: 2 }
+      ];
+      document.getElementById("trendChart").innerHTML = TREND.map(function (t, i) {
+        var h = t.v === 0 ? 6 : Math.round(t.v / 3 * 90) + 6;
+        return '<div class="chart-col' + (i === TREND.length - 1 ? " accent" : "") + '">' +
+          '<div class="bar-v" style="--h:' + h + '%" title="' + t.d + " · 差异 " + t.v + ' 笔"></div>' +
+          '<div class="bar-x">' + t.d + "</div></div>";
+      }).join("");
+
+      /* ---- 启动 ---- */
+      buildFilters();
+      load(true);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.OrderItemSnapshotMapper">
+
+    <resultMap type="OrderItemSnapshot" id="OrderItemSnapshotResult">
+        <id     property="snapshotId"           column="snapshot_id"/>
+        <result property="orderItemId"          column="order_item_id"/>
+        <result property="productName"          column="product_name"/>
+        <result property="skuCode"              column="sku_code"/>
+        <result property="attributesJson"       column="attributes_json"/>
+        <result property="imageUrl"             column="image_url"/>
+        <result property="originCountryCode"    column="origin_country_code"/>
+        <result property="hsCode"               column="hs_code"/>
+        <result property="declaredName"         column="declared_name"/>
+        <result property="declaredValueAmount"  column="declared_value_amount"/>
+        <result property="declaredCurrencyCode" column="declared_currency_code"/>
+        <result property="unitPriceAmount"      column="unit_price_amount"/>
+        <result property="currencyCode"         column="currency_code"/>
+        <result property="createTime"           column="create_time"/>
+    </resultMap>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="OrderItemSnapshotResult">
+        select s.snapshot_id, s.order_item_id, s.product_name, s.sku_code, s.attributes_json, s.image_url,
+               s.origin_country_code, s.hs_code, s.declared_name, s.declared_value_amount,
+               s.declared_currency_code, s.unit_price_amount, s.currency_code, s.create_time
+        from order_item_snapshots s
+        inner join order_items i on i.order_item_id = s.order_item_id
+        where i.order_id = #{orderId}
+        order by s.snapshot_id
+    </select>
+
+    <insert id="insertOrderItemSnapshot" parameterType="OrderItemSnapshot" useGeneratedKeys="true" keyProperty="snapshotId">
+        insert into order_item_snapshots (order_item_id, product_name, sku_code, attributes_json, image_url,
+            origin_country_code, hs_code, declared_name, declared_value_amount, declared_currency_code,
+            unit_price_amount, currency_code, create_time)
+        values (#{orderItemId}, #{productName}, #{skuCode}, #{attributesJson}, #{imageUrl},
+            #{originCountryCode}, #{hsCode}, #{declaredName}, #{declaredValueAmount}, #{declaredCurrencyCode},
+            #{unitPriceAmount}, #{currencyCode}, sysdate())
+    </insert>
+
+</mapper>

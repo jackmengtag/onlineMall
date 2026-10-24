@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>定价中心 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="pricing" data-title="定价中心" data-crumb="商品与价格 / 定价中心">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 价格列表 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" id="priceGlyph"></span>价格列表</div>
+          <span class="tiny muted" id="priceCount">加载中…</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar mb-0">
+            <div class="toolbar-left">
+              <select class="select" id="coFilter" style="width:auto" aria-label="按国家筛选"></select>
+              <select class="select" id="chFilter" style="width:auto" aria-label="按渠道筛选"></select>
+              <select class="select" id="cuFilter" style="width:auto" aria-label="按币种筛选"></select>
+              <label class="search-box" id="qBox">
+                <input type="search" id="qInput" placeholder="搜索 SKU / 商品名" aria-label="搜索价格">
+              </label>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn" id="importBtn" type="button">批量导入</button>
+              <button class="btn primary" id="addBtn" type="button">新增价格</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>商品</th><th>国家</th><th>渠道</th><th>币种</th>
+              <th class="text-right">标价</th><th class="text-right">促销价</th><th>折扣</th>
+              <th>生效期</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="priceRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 新增 / 编辑价格模态 -->
+  <div class="modal-mask" id="priceMask" onclick="closePriceModal()"></div>
+  <div class="modal" id="priceModal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div class="h3" id="priceModalTitle">新增价格</div>
+      <button class="icon-btn" type="button" id="pmClose" onclick="closePriceModal()" title="关闭"></button>
+    </div>
+    <div class="modal-body">
+      <div class="grid cols-2" style="gap:16px">
+        <div class="field" style="grid-column:1/-1">
+          <label for="pmSku">SKU *</label>
+          <select class="select" id="pmSku"></select>
+        </div>
+        <div class="field">
+          <label for="pmCountry">国家 *</label>
+          <select class="select" id="pmCountry">
+            <option value="US">美国 US</option>
+            <option value="DE">德国 DE</option>
+            <option value="SG">新加坡 SG</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pmChannel">渠道 *</label>
+          <select class="select" id="pmChannel"></select>
+        </div>
+        <div class="field">
+          <label for="pmCurrency">币种 *</label>
+          <select class="select" id="pmCurrency">
+            <option value="USD">USD 美元</option>
+            <option value="EUR">EUR 欧元</option>
+            <option value="CNY">CNY 人民币</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pmList">标价 *</label>
+          <input class="input" id="pmList" type="number" min="0" step="0.01" placeholder="159.99">
+          <span class="tiny muted">请输入对应币种的元金额</span>
+        </div>
+        <div class="field">
+          <label for="pmSale">促销价 *</label>
+          <input class="input" id="pmSale" type="number" min="0" step="0.01" placeholder="129.99">
+        </div>
+        <div class="field">
+          <label for="pmFrom">生效开始 *</label>
+          <input class="input" id="pmFrom" type="date">
+        </div>
+        <div class="field">
+          <label for="pmTo">生效结束 *</label>
+          <input class="input" id="pmTo" type="date">
+        </div>
+      </div>
+      <div id="pmWarn" class="mt-16" style="display:none">
+        <span class="badge danger"><i class="dt"></i>违反排他约束 EXCLUDE USING gist</span>
+        <div class="tiny muted mt-8">同一 SKU / 国家 / 渠道 / 币种的生效期区间不得重叠，请调整生效开始或结束日期。</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" onclick="closePriceModal()">取消</button>
+      <button class="btn primary" type="button" id="pmSubmit">保存</button>
+    </div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var PRICE_STATUS = {
+        ACTIVE: { label: "生效中", cls: "success" },
+        SCHEDULED: { label: "待生效", cls: "warning" },
+        EXPIRED: { label: "已过期", cls: "neutral" }
+      };
+      var state = { country: "all", channel: "all", currency: "all", q: "" };
+      var ALL = [];
+      var EDIT = null; // 编辑中的行引用
+      var CHAN = {};
+      DB.CHANNELS.forEach(function (c) { CHAN[c.code] = c; });
+
+      var tbody = document.getElementById("priceRows");
+      var kpiRow = document.getElementById("kpiRow");
+      var priceCount = document.getElementById("priceCount");
+      var pmWarn = document.getElementById("pmWarn");
+
+      document.getElementById("priceGlyph").innerHTML = icon("tag", { size: 16 });
+      document.querySelector("#qBox").insertAdjacentHTML("afterbegin", icon("search", { size: 16 }));
+      document.getElementById("importBtn").insertAdjacentHTML("afterbegin", icon("download", { size: 16 }));
+      document.getElementById("addBtn").insertAdjacentHTML("afterbegin", icon("plus", { size: 15 }));
+      document.getElementById("pmClose").innerHTML = icon("x", { size: 18 });
+
+      function todayStr() {
+        var d = new Date();
+        function p(n) { return (n < 10 ? "0" : "") + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+      }
+      function discountPct(r) { return r.list ? Math.round((1 - r.sale / r.list) * 100) : 0; }
+      function channelName(code) { return CHAN[code] ? CHAN[code].name : code; }
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function kpiCard(label, value, glyph, tone, sub) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var active = ALL.filter(function (r) { return r.status === "ACTIVE"; }).length;
+        var scheduled = ALL.filter(function (r) { return r.status === "SCHEDULED"; }).length;
+        var skus = {};
+        ALL.forEach(function (r) { skus[r.sku] = 1; });
+        var skuCount = Object.keys(skus).length;
+        var withDiscount = ALL.filter(function (r) { return r.list > 0; });
+        var avg = withDiscount.length
+          ? withDiscount.reduce(function (a, r) { return a + (1 - r.sale / r.list); }, 0) / withDiscount.length
+          : 0;
+        kpiRow.innerHTML =
+          kpiCard("生效中价格", active, "check-circle", "", "状态为「生效中」的价格条目") +
+          kpiCard("待生效", scheduled, "clock", "gold", "状态为「待生效」的价格条目") +
+          kpiCard("覆盖 SKU 数", skuCount, "layers", "info", "去重后的 SKU 数量") +
+          kpiCard("平均折扣率", (avg * 100).toFixed(1) + "%", "percent", "accent", "按 (标价 - 促销价) / 标价 平均");
+      }
+
+      function filtered() {
+        var q = state.q.trim().toLowerCase();
+        return ALL.filter(function (r) {
+          if (state.country !== "all" && r.country !== state.country) return false;
+          if (state.channel !== "all" && r.channel !== state.channel) return false;
+          if (state.currency !== "all" && r.currency !== state.currency) return false;
+          if (q && (r.sku + " " + r.name).toLowerCase().indexOf(q) === -1) return false;
+          return true;
+        });
+      }
+
+      function rowHtml(r) {
+        var off = discountPct(r);
+        return "<tr>" +
+          '<td><div class="cell-2line"><span class="mono cell-strong">' + FMT.esc(r.sku) + "</span><i>" + FMT.esc(r.name) + "</i></div></td>" +
+          "<td>" + FMT.esc(r.country) + "</td>" +
+          '<td><span class="pill">' + FMT.esc(channelName(r.channel)) + "</span></td>" +
+          '<td class="mono">' + FMT.esc(r.currency) + "</td>" +
+          '<td class="text-right num">' + FMT.money(r.list, r.currency) + "</td>" +
+          '<td class="text-right num price">' + FMT.money(r.sale, r.currency) + "</td>" +
+          '<td class="num">' + (off > 0 ? "-" + off + "%" : "—") + "</td>" +
+          '<td class="muted tiny nowrap">' + FMT.esc(r.from) + " ~ " + FMT.esc(r.to) + "</td>" +
+          "<td>" + UI.badge(PRICE_STATUS, r.status) + "</td>" +
+          '<td><button class="btn sm" type="button" data-edit="' + r._i + '">编辑</button></td>' +
+        "</tr>";
+      }
+      function emptyHtml() {
+        var on = state.q.trim() || state.country !== "all" || state.channel !== "all" || state.currency !== "all";
+        var text = on ? "没有符合当前筛选条件的价格" : "暂无价格数据";
+        var sub = on ? "试试调整国家 / 渠道 / 币种或清空搜索关键词" : "新增价格后将自动出现在这里";
+        return '<div class="empty"><div class="empty-glyph">' + icon("tag", { size: 26 }) + "</div>" +
+          "<b>" + text + "</b><span class=\"tiny\">" + sub + "</span></div>";
+      }
+      function renderTable() {
+        var rows = filtered();
+        priceCount.textContent = "共 " + rows.length + " 条价格";
+        tbody.innerHTML = rows.length
+          ? rows.map(rowHtml).join("")
+          : '<tr><td colspan="10">' + emptyHtml() + "</td></tr>";
+      }
+
+      /* ---------- 模态 ---------- */
+      function showWarn(on) { pmWarn.style.display = on ? "block" : "none"; }
+      function buildSkuOptions() {
+        document.getElementById("pmSku").innerHTML = DB.PRODUCTS.map(function (p) {
+          return '<option value="' + p.sku + '">' + FMT.esc(p.sku) + " · " + FMT.esc(p.name) + "</option>";
+        }).join("");
+      }
+      function openModal(row) {
+        EDIT = row || null;
+        showWarn(false);
+        document.getElementById("priceModalTitle").textContent = row ? "编辑价格" : "新增价格";
+        buildSkuOptions();
+        if (row) {
+          document.getElementById("pmSku").value = row.sku;
+          document.getElementById("pmCountry").value = row.country;
+          document.getElementById("pmChannel").value = row.channel;
+          document.getElementById("pmCurrency").value = row.currency;
+          document.getElementById("pmList").value = (row.list / 100).toFixed(2);
+          document.getElementById("pmSale").value = (row.sale / 100).toFixed(2);
+          document.getElementById("pmFrom").value = row.from;
+          document.getElementById("pmTo").value = row.to;
+        } else {
+          document.getElementById("pmList").value = "";
+          document.getElementById("pmSale").value = "";
+          document.getElementById("pmFrom").value = todayStr();
+          document.getElementById("pmTo").value = "2026-12-31";
+        }
+        document.getElementById("priceMask").classList.add("open");
+        UI.openModal("priceModal");
+      }
+      window.closePriceModal = function () {
+        document.getElementById("priceMask").classList.remove("open");
+        UI.closeModal("priceModal");
+        showWarn(false);
+        EDIT = null;
+      };
+      window.openPriceModal = function (i) {
+        var r = typeof i === "number" ? ALL.find(function (x) { return x._i === i; }) : null;
+        openModal(r);
+      };
+
+      function overlaps(a, b) {
+        return a.from <= b.to && b.from <= a.to;
+      }
+
+      document.getElementById("pmSubmit").addEventListener("click", function () {
+        var btn = this;
+        if (btn.classList.contains("disabled")) return;
+        var sku = document.getElementById("pmSku").value;
+        var country = document.getElementById("pmCountry").value;
+        var channel = document.getElementById("pmChannel").value;
+        var currency = document.getElementById("pmCurrency").value;
+        var list = Math.round(parseFloat(document.getElementById("pmList").value) * 100);
+        var sale = Math.round(parseFloat(document.getElementById("pmSale").value) * 100);
+        var from = document.getElementById("pmFrom").value;
+        var to = document.getElementById("pmTo").value;
+
+        if (!sku || !from || !to || !(list > 0) || !(sale > 0)) {
+          UI.toast("请完整填写 SKU、标价、促销价与生效期", "error"); return;
+        }
+        if (from > to) { UI.toast("生效开始日期不能晚于结束日期", "error"); return; }
+
+        var candidate = { sku: sku, country: country, channel: channel, currency: currency, list: list, sale: sale, from: from, to: to };
+        var clash = ALL.some(function (r) {
+          if (EDIT && r === EDIT) return false;
+          return r.sku === sku && r.country === country && r.channel === channel && r.currency === currency && overlaps(candidate, r);
+        });
+        if (clash) {
+          showWarn(true);
+          UI.toast("价格有效期与既有价格重叠，同一 SKU/国家/渠道/币种的生效期不得重叠", "error");
+          return;
+        }
+        showWarn(false);
+
+        btn.classList.add("disabled");
+        var label = btn.textContent;
+        btn.textContent = "保存中…";
+        setTimeout(function () {
+          btn.classList.remove("disabled");
+          btn.textContent = label;
+
+          var p = DB.PRODUCTS.find(function (x) { return x.sku === sku; });
+          var name = p ? p.name : sku;
+          var status = from <= todayStr() ? "ACTIVE" : "SCHEDULED";
+
+          if (EDIT) {
+            EDIT.sku = sku; EDIT.name = name; EDIT.country = country; EDIT.channel = channel;
+            EDIT.currency = currency; EDIT.list = list; EDIT.sale = sale; EDIT.from = from;
+            EDIT.to = to; EDIT.status = status;
+            UI.toast("价格已更新");
+          } else {
+            ALL.unshift({ sku: sku, name: name, country: country, channel: channel, currency: currency, list: list, sale: sale, from: from, to: to, status: status });
+            UI.toast("价格已新增");
+          }
+          reindex();
+          renderKPI();
+          renderTable();
+          window.closePriceModal();
+        }, 620);
+      });
+
+      function reindex() { ALL.forEach(function (r, i) { r._i = i; }); }
+
+      /* ---------- 工具栏 ---------- */
+      function buildSelects() {
+        document.getElementById("coFilter").innerHTML =
+          '<option value="all">全部国家</option><option value="US">US</option><option value="DE">DE</option><option value="SG">SG</option>';
+        document.getElementById("chFilter").innerHTML = '<option value="all">全部渠道</option>' +
+          DB.CHANNELS.map(function (c) { return '<option value="' + c.code + '">' + FMT.esc(c.name) + "</option>"; }).join("");
+        document.getElementById("cuFilter").innerHTML =
+          '<option value="all">全部币种</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="CNY">CNY</option>';
+        document.getElementById("pmChannel").innerHTML = DB.CHANNELS.map(function (c) {
+          return '<option value="' + c.code + '">' + FMT.esc(c.name) + "</option>";
+        }).join("");
+      }
+
+      document.getElementById("qInput").addEventListener("input", function () { state.q = this.value; renderTable(); });
+      document.getElementById("coFilter").addEventListener("change", function () { state.country = this.value; renderTable(); });
+      document.getElementById("chFilter").addEventListener("change", function () { state.channel = this.value; renderTable(); });
+      document.getElementById("cuFilter").addEventListener("change", function () { state.currency = this.value; renderTable(); });
+      document.getElementById("importBtn").addEventListener("click", function () {
+        UI.toast("批量导入模板已下载（演示）", "info");
+      });
+      document.getElementById("addBtn").addEventListener("click", function () { window.openPriceModal(); });
+      tbody.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-edit]");
+        if (b) window.openPriceModal(parseInt(b.getAttribute("data-edit"), 10));
+      });
+
+      (async function () {
+        renderKPISkeleton();
+        tbody.innerHTML = skelRows(6, 10);
+        buildSelects();
+        var res = await API.fetchPricing();
+        ALL = res.data;
+        reindex();
+        renderKPI();
+        renderTable();
+      })();
+    })();
+  </script>
+</body>
+</html>

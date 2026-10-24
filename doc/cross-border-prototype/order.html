@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>订单详情 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="orders">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container">
+      <section class="section">
+        <div id="orderDetail"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 申请售后弹层 -->
+  <div class="modal-mask" id="afsMask"></div>
+  <div class="modal" id="afsModal">
+    <div class="modal-head">
+      <h3 class="h3">申请售后</h3>
+      <button class="btn ghost icon" type="button" id="afsClose" title="关闭"></button>
+    </div>
+    <div class="modal-body stack">
+      <div class="field">
+        <label>售后类型</label>
+        <div class="opts" id="afsType">
+          <button class="opt" type="button" data-type="退货退款">退货退款</button>
+          <button class="opt" type="button" data-type="换货">换货</button>
+          <button class="opt" type="button" data-type="仅退款">仅退款</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>售后原因</label>
+        <select class="select" id="afsReason">
+          <option value="">请选择售后原因</option>
+          <option value="商品功能异常">商品功能异常</option>
+          <option value="商品与描述不符">商品与描述不符</option>
+          <option value="物流破损或丢件">物流破损或丢件</option>
+          <option value="七天无理由退货">七天无理由退货</option>
+          <option value="物流延误补偿">物流延误补偿</option>
+          <option value="其他原因">其他原因</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>问题描述</label>
+        <textarea class="textarea" id="afsDesc" placeholder="请描述商品问题、收货情况与您的诉求（如退货退款金额、换货型号等）"></textarea>
+      </div>
+      <div class="field">
+        <label>图片凭证</label>
+        <div class="thumbs" id="afsThumbs"></div>
+        <div class="tiny muted">点击方块可选择 / 取消（示例占位，最多 2 张）</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" id="afsCancel">取消</button>
+      <button class="btn accent" type="button" id="afsSubmit">提交申请</button>
+    </div>
+  </div>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    /* =====================================================================
+     * 订单详情 —— 数据：localStorage[nc_local_orders] + DB.ORDERS（经 API 桩获取）
+     * 复用：FMT.money / UI.badge / UI.imgTag / UI.toast / UI.openModal / UI.closeModal
+     *      API.fetchOrders / API.payOrder / API.submitAftersale
+     * ===================================================================== */
+    (function () {
+      var LOCAL_KEY = "nc_local_orders";
+
+      function nowStr() {
+        var d = new Date();
+        function p(n) { return (n < 10 ? "0" : "") + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+      function readLocal() {
+        try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]"); } catch (e) { return []; }
+      }
+      function writeLocal(arr) {
+        try { localStorage.setItem(LOCAL_KEY, JSON.stringify(arr)); } catch (e) {}
+      }
+      function channelName(code) {
+        var c = (DB.CHANNELS || []).find(function (x) { return x.code === code; });
+        return c ? c.name : code;
+      }
+      function whOf(code) {
+        return (DB.WAREHOUSES || []).find(function (x) { return x.code === code; }) || { code: code, name: code, color: "#999" };
+      }
+      function param(name) {
+        var m = new RegExp("[?&]" + name + "=([^&]+)").exec(location.search);
+        return m ? decodeURIComponent(m[1]) : "";
+      }
+      function kv(k, v) { return '<div class="kv"><span>' + k + "</span><b>" + v + "</b></div>"; }
+      function panel(title, glyph, body, id) {
+        return '<section class="panel"' + (id ? ' id="' + id + '"' : "") + ">" +
+          '<div class="panel-head"><div class="panel-title"><span class="panel-glyph">' + icon(glyph, { size: 16 }) + "</span>" + title + "</div></div>" +
+          '<div class="panel-body">' + body + "</div>" +
+        "</section>";
+      }
+      function timeline(items) {
+        return '<div class="timeline">' + items.map(function (it, i, arr) {
+          var last = i === arr.length - 1;
+          return '<div class="tl-item"><span class="tl-dot ' + (last ? "current" : "done") + '">' + icon("check", { size: 9 }) + "</span>" +
+            '<div class="tl-title">' + it.title + "</div>" +
+            (it.meta ? '<div class="tl-meta">' + it.meta + "</div>" : "") +
+            (it.note ? '<div class="tl-note">' + it.note + "</div>" : "") +
+          "</div>";
+        }).join("") + "</div>";
+      }
+
+      var DB_ORDERS = [], LOCAL = [], current = null;
+      var thumbSel = [false, false];
+      var afsType = "";
+
+      var STATUS_STEP = {
+        CREATED: 0, PENDING_PAYMENT: 0, PAID: 1, CONFIRMED: 2, FULFILLING: 3,
+        SHIPPED: 4, IN_TRANSIT: 5, DELIVERED: 6, COMPLETED: 7, CANCELLED: -1
+      };
+      var STEP_DEF = ["订单创建", "支付成功", "订单确认", "履约中", "已发货", "运输中", "已妥投", "已完成"];
+
+      var detailEl = document.getElementById("orderDetail");
+      document.getElementById("afsClose").innerHTML = icon("x", { size: 18 });
+
+      function merged() {
+        var arr = [];
+        LOCAL.forEach(function (o) { arr.push(o); });
+        DB_ORDERS.forEach(function (o) { arr.push(o); });
+        return arr;
+      }
+      function isLocal(no) {
+        return LOCAL.some(function (x) { return x.no === no; });
+      }
+
+      /* ---------- 顶部 ---------- */
+      function actionsHtml(o) {
+        var s = o.status, out = "";
+        if (s === "PENDING_PAYMENT" || s === "CREATED") {
+          out += '<button class="btn accent sm" type="button" data-pay="' + o.no + '">' + icon("credit-card", { size: 15 }) + "去支付</button>";
+        } else if (s === "PAID" || s === "CONFIRMED" || s === "FULFILLING") {
+          out += '<a class="btn primary sm" href="order.html?no=' + o.no + '">查看详情</a>';
+        } else if (s === "SHIPPED" || s === "IN_TRANSIT") {
+          out += '<a class="btn primary sm" href="#tracking">' + icon("truck", { size: 15 }) + "查看物流</a>";
+        } else if (s === "DELIVERED" || s === "COMPLETED") {
+          out += '<button class="btn sm" type="button" data-afs>' + icon("refresh", { size: 15 }) + "申请售后</button>";
+        }
+        out += '<a class="btn ghost sm" href="orders.html">返回订单列表</a>';
+        return out;
+      }
+
+      function headerHtml(o) {
+        return '<div class="row between wrap mb-16" style="gap:12px">' +
+          '<div class="row" style="gap:14px">' +
+            '<a class="btn ghost sm" href="orders.html">' + icon("chevron-left", { size: 15 }) + "我的订单</a>" +
+            '<div><div class="eyebrow">Order Detail</div>' +
+              '<div class="row" style="gap:10px;margin-top:4px">' +
+                '<span class="mono" style="font-size:15px;font-weight:600">' + FMT.esc(o.no) + "</span>" +
+                UI.badge(DB.ORDER_STATUS, o.status) +
+                (isLocal(o.no) ? '<span class="badge accent">新</span>' : "") +
+              "</div>" +
+            "</div>" +
+          "</div>" +
+          '<div class="row" style="gap:10px">' + actionsHtml(o) + "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 步骤条 ---------- */
+      function stepsPanel(o) {
+        var idx = STATUS_STEP[o.status];
+        if (idx == null) idx = 0;
+        var steps = STEP_DEF.map(function (label, i) {
+          var cls = idx < 0 ? "" : (i < idx ? " done" : (i === idx ? " current" : ""));
+          var sep = i < STEP_DEF.length - 1
+            ? '<div class="step-sep' + (idx < 0 ? "" : (i < idx ? " done" : "")) + '"></div>' : "";
+          return '<div class="step' + cls + '"><b>' + (i + 1) + "</b>" + label + "</div>" + sep;
+        }).join("");
+        var note = o.status === "CANCELLED"
+          ? '<div class="tiny muted mt-12">订单已取消，履约流程终止，库存已释放。</div>' : "";
+        return '<section class="panel mb-16">' +
+          '<div class="panel-head"><div class="panel-title"><span class="panel-glyph">' + icon("truck", { size: 16 }) + "</span>订单进度</div>" +
+            '<span class="tiny muted">下单时间 ' + FMT.esc(o.placedAt) + "</span></div>" +
+          '<div class="panel-body"><div class="steps">' + steps + "</div>" + note + "</div>" +
+        "</section>";
+      }
+
+      /* ---------- 左列 ---------- */
+      function leftCol(o) {
+        var cur = o.currency || FMT.currency();
+        var items = (o.items || []).map(function (it) {
+          return '<div class="citem">' +
+            UI.imgTag(it.image, it.name, "citem-img", it.name) +
+            "<div>" +
+              '<div class="citem-name">' + FMT.esc(it.name) + "</div>" +
+              '<div class="citem-spec">' + FMT.esc(it.spec || "") + "</div>" +
+              '<div class="tiny muted mt-8">单价 ' + FMT.money(it.unit, cur) + "</div>" +
+            "</div>" +
+            '<div class="text-right">' +
+              '<div class="tiny muted">× ' + it.qty + "</div>" +
+              '<div class="price" style="font-size:15px">' + FMT.money(it.unit * it.qty, cur) + "</div>" +
+            "</div>" +
+          "</div>";
+        }).join("");
+        var a = o.amounts || {};
+        var amt = '<div class="kv-list">' +
+          kv("小计", FMT.money(a.subtotal, cur)) +
+          kv("优惠", "- " + FMT.money(a.discount, cur)) +
+          kv("运费", a.shipping ? FMT.money(a.shipping, cur) : "免运费") +
+          kv("税费", FMT.money(a.tax, cur)) +
+        "</div>" +
+        '<div class="sum-row total"><span>合计</span><b>' + FMT.money(a.total, cur) + "</b></div>";
+
+        return panel("商品与价格快照", "box", items) + panel("金额明细", "wallet", amt);
+      }
+
+      /* ---------- 右列 ---------- */
+      function rightCol(o) {
+        var cur = o.currency || FMT.currency();
+        var sn = o.snapshot || {};
+
+        var snapBody = '<div class="kv-list">' +
+          kv("收件人", FMT.esc(sn.recipient || "-")) +
+          kv("电话", FMT.esc(sn.phone || "-")) +
+          kv("地址", FMT.esc(sn.addr || "-")) +
+          kv("税费规则版本", FMT.esc(sn.taxRule || "-")) +
+          kv("汇率版本", FMT.esc(sn.rateVer || "-")) +
+          kv("汇率", String(sn.rate == null ? "-" : sn.rate)) +
+        "</div>" +
+        '<p class="sum-note">下单快照不可变：收货信息、税费规则与汇率均以支付时刻为准，用于跨境合规与对账追溯。</p>';
+
+        var payBody = (o.pay && o.pay.length)
+          ? o.pay.map(function (p, i, arr) {
+              return '<div class="kv-list">' +
+                kv("支付单号", '<span class="mono">' + FMT.esc(p.no) + "</span>") +
+                kv("支付渠道", FMT.esc(p.provider)) +
+                kv("支付方式", FMT.esc(p.method)) +
+                kv("金额", FMT.money(p.amount, cur)) +
+                kv("状态", UI.badge(DB.PAY_TXN_STATUS, p.status)) +
+                kv("时间", FMT.esc(p.at)) +
+              "</div>" + (i < arr.length - 1 ? '<hr class="hr">' : "");
+            }).join("")
+          : '<p class="muted">暂无支付记录</p>';
+
+        var fulBody = (o.ful && o.ful.length)
+          ? o.ful.map(function (f, i, arr) {
+              var w = whOf(f.wh);
+              return '<div class="kv-list">' +
+                kv("履约单号", '<span class="mono">' + FMT.esc(f.no) + "</span>") +
+                kv("发货仓", '<span class="wh-badge"><i style="background:' + w.color + '"></i>' + FMT.esc(w.name) + "</span>") +
+                kv("状态", UI.badge(DB.FUL_ORDER_STATUS, f.status)) +
+                kv("预计发货", FMT.esc(f.eta || "-")) +
+                (f.note ? '<div class="tiny muted mt-8">' + FMT.esc(f.note) + "</div>" : "") +
+              "</div>" + (i < arr.length - 1 ? '<hr class="hr">' : "");
+            }).join("")
+          : '<p class="muted">暂无履约信息</p>';
+        if (o.ful && o.ful.length > 1) {
+          fulBody = '<p class="sum-note mb-16">多仓拆分履约：本单已拆分为 ' + o.ful.length + " 个履约单</p>" + fulBody;
+        }
+
+        var trackBody;
+        if (o.ship && o.ship.length) {
+          trackBody = o.ship.map(function (s) {
+            var events = (s.events || []).map(function (e) {
+              return { title: FMT.esc(e.code), meta: FMT.esc(e.at) + " · " + FMT.esc(e.loc), note: e.note ? FMT.esc(e.note) : "" };
+            });
+            return '<div class="kv-list">' +
+              kv("承运商", FMT.esc(s.carrier)) +
+              kv("运单号", '<span class="mono">' + FMT.esc(s.tracking) + "</span> " +
+                '<button class="btn ghost sm icon" type="button" data-copy="' + FMT.esc(s.tracking) + '" title="复制运单号">' + icon("copy", { size: 14 }) + "</button>") +
+              kv("状态", UI.badge(DB.ORDER_STATUS, s.status)) +
+            "</div>" + '<div class="mt-16">' + timeline(events) + "</div>";
+          }).join('<hr class="hr">');
+        } else {
+          trackBody = '<p class="muted">尚未发货</p>';
+        }
+
+        var histItems = (o.history || []).map(function (h) {
+          return { title: FMT.esc(h.t), meta: FMT.esc(h.at || "") + (h.by ? " · " + FMT.esc(h.by) : ""), note: h.note ? FMT.esc(h.note) : "" };
+        });
+
+        return panel("收货与快照", "map-pin", snapBody) +
+          panel("支付信息", "credit-card", payBody) +
+          panel("履约信息", "warehouse", fulBody) +
+          panel("物流信息", "truck", trackBody, "tracking") +
+          panel("状态历史", "clock", timeline(histItems));
+      }
+
+      /* ---------- 渲染 ---------- */
+      function render() {
+        var o = current;
+        detailEl.innerHTML = headerHtml(o) + stepsPanel(o) +
+          '<div class="two-col">' +
+            '<div class="stack">' + leftCol(o) + "</div>" +
+            '<div class="stack">' + rightCol(o) + "</div>" +
+          "</div>";
+        bind(o);
+      }
+
+      function bind(o) {
+        var payBtn = UI.qs("[data-pay]", detailEl);
+        if (payBtn) payBtn.addEventListener("click", function (e) { e.preventDefault(); pay(o, payBtn); });
+        var afsBtn = UI.qs("[data-afs]", detailEl);
+        if (afsBtn) afsBtn.addEventListener("click", function (e) { e.preventDefault(); openAfs(); });
+        UI.qsa("[data-copy]", detailEl).forEach(function (b) {
+          b.addEventListener("click", function () { copyText(b.getAttribute("data-copy")); });
+        });
+      }
+
+      function copyText(t) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(function () { UI.toast("已复制"); }, function () { UI.toast("已复制", "info"); });
+        } else {
+          UI.toast("已复制", "info");
+        }
+      }
+
+      /* ---------- 支付 ---------- */
+      async function pay(o, btn) {
+        btn.disabled = true;
+        btn.innerHTML = icon("clock", { size: 15 }) + "支付中…";
+        var res = await API.payOrder(o.no);
+        if (!res || res.code !== 0) {
+          UI.toast("支付失败，请稍后重试", "error");
+          btn.disabled = false;
+          btn.innerHTML = icon("credit-card", { size: 15 }) + "去支付";
+          return;
+        }
+        o.status = "PAID";
+        o.payStatus = "PAID";
+        o.paidAt = nowStr();
+        if (o.pay && o.pay.length) o.pay[0].status = "SUCCEEDED";
+        o.history = (o.history || []).concat([{ t: "支付成功", at: o.paidAt, by: "支付中心", note: "模拟支付回调，订单状态更新为已支付" }]);
+        var arr = readLocal();
+        var hit = arr.find(function (x) { return x.no === o.no; });
+        if (hit) {
+          hit.status = "PAID"; hit.payStatus = "PAID"; hit.paidAt = o.paidAt;
+          if (hit.pay && hit.pay.length) hit.pay[0].status = "SUCCEEDED";
+          hit.history = o.history;
+          writeLocal(arr);
+        }
+        UI.toast("支付成功");
+        render();
+      }
+
+      /* ---------- 售后弹层 ---------- */
+      function openAfs() { UI.openModal("afsMask"); UI.openModal("afsModal"); }
+      function closeAfs() { UI.closeModal("afsMask"); UI.closeModal("afsModal"); }
+
+      function buildThumbs() {
+        var wrap = document.getElementById("afsThumbs");
+        wrap.innerHTML = [0, 1].map(function (i) {
+          var on = thumbSel[i];
+          return '<div data-thumb="' + i + '" style="width:44px;height:44px;border-radius:var(--r-sm);background:var(--surface-3);' +
+            "border:2px solid " + (on ? "var(--brand-600)" : "var(--border)") + ';display:grid;place-items:center;color:var(--text-mute);cursor:pointer">' +
+            icon("image", { size: 18 }) + "</div>";
+        }).join("");
+        UI.qsa("[data-thumb]", wrap).forEach(function (el) {
+          el.addEventListener("click", function () {
+            var i = parseInt(el.getAttribute("data-thumb"), 10);
+            thumbSel[i] = !thumbSel[i];
+            buildThumbs();
+          });
+        });
+      }
+
+      function resetAfs() {
+        afsType = "";
+        thumbSel = [false, false];
+        UI.qsa("[data-type]", document.getElementById("afsType")).forEach(function (b) { b.classList.remove("on"); });
+        document.getElementById("afsReason").value = "";
+        document.getElementById("afsDesc").value = "";
+        buildThumbs();
+      }
+
+      async function submitAfs() {
+        var reason = document.getElementById("afsReason").value;
+        if (!afsType) { UI.toast("请选择售后类型", "error"); return; }
+        if (!reason) { UI.toast("请选择售后原因", "error"); return; }
+        var btn = document.getElementById("afsSubmit");
+        btn.disabled = true;
+        btn.innerHTML = icon("clock", { size: 15 }) + "提交中…";
+        var res = await API.submitAftersale({
+          orderNo: current.no,
+          type: afsType,
+          reason: reason,
+          desc: document.getElementById("afsDesc").value.trim(),
+          images: thumbSel.map(function (v, i) { return v ? i : null; }).filter(function (v) { return v !== null; })
+        });
+        if (!res || res.code !== 0) {
+          UI.toast("提交失败，请稍后重试", "error");
+          btn.disabled = false;
+          btn.innerHTML = "提交申请";
+          return;
+        }
+        current.afsStatus = "REQUESTED";
+        current.history = (current.history || []).concat([{ t: "售后申请", at: nowStr(), by: "买家", note: "提交 " + afsType + " 申请" }]);
+        var arr = readLocal();
+        var hit = arr.find(function (x) { return x.no === current.no; });
+        if (hit) { hit.afsStatus = "REQUESTED"; hit.history = current.history; writeLocal(arr); }
+        UI.toast("售后申请已提交");
+        closeAfs();
+        btn.disabled = false;
+        btn.innerHTML = "提交申请";
+        render();
+      }
+
+      function handleHash() {
+        var h = location.hash;
+        if (h === "#tracking") {
+          var t = document.getElementById("tracking");
+          if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (h === "#afs") {
+          openAfs();
+        }
+      }
+
+      function skeleton() {
+        return '<div class="skel" style="width:280px;height:26px;margin-bottom:18px"></div>' +
+          '<div class="panel mb-16"><div class="panel-body"><div class="skel" style="width:100%;height:24px"></div></div></div>' +
+          '<div class="two-col">' +
+            '<div class="stack">' +
+              '<div class="panel"><div class="panel-body stack"><div class="skel" style="width:40%"></div>' +
+                '<div class="row" style="gap:12px"><div class="skel" style="width:76px;height:76px"></div>' +
+                '<div class="stack" style="flex:1;gap:8px"><div class="skel" style="width:60%"></div><div class="skel" style="width:35%"></div></div></div></div></div>' +
+              '<div class="panel"><div class="panel-body stack"><div class="skel" style="width:30%"></div><div class="skel" style="width:100%"></div><div class="skel" style="width:80%"></div></div></div>' +
+            "</div>" +
+            '<div class="stack">' +
+              '<div class="panel"><div class="panel-body stack"><div class="skel" style="width:50%"></div><div class="skel" style="width:90%"></div><div class="skel" style="width:70%"></div></div></div>' +
+              '<div class="panel"><div class="panel-body stack"><div class="skel" style="width:45%"></div><div class="skel" style="width:85%"></div></div></div>' +
+            "</div>" +
+          "</div>";
+      }
+
+      function emptyHtml() {
+        return '<div class="empty"><div class="empty-glyph">' + icon("receipt", { size: 24 }) + "</div>" +
+          "<b>订单不存在</b><span class=\"tiny\">该订单可能已被删除，或链接已失效</span>" +
+          '<a class="btn accent sm mt-8" href="orders.html">返回我的订单</a></div>';
+      }
+
+      async function init() {
+        if (!UI.requireAuth("order.html")) return;
+        detailEl.innerHTML = skeleton();
+        var res = await API.fetchOrders({});
+        if (!res || res.code !== 0) {
+          detailEl.innerHTML = '<div class="empty"><div class="empty-glyph">' + icon("alert-triangle", { size: 24 }) + "</div>" +
+            "<b>订单加载失败</b><span class=\"tiny\">请稍后重试</span></div>";
+          UI.toast("订单加载失败", "error");
+          return;
+        }
+        DB_ORDERS = res.data || [];
+        LOCAL = readLocal();
+        var list = merged();
+        var no = param("no");
+        current = no ? list.find(function (o) { return o.no === no; }) : null;
+        if (!current) { detailEl.innerHTML = emptyHtml(); return; }
+        render();
+        handleHash();
+        window.addEventListener("hashchange", handleHash);
+
+        /* 弹层交互绑定 */
+        buildThumbs();
+        UI.qsa("[data-type]", document.getElementById("afsType")).forEach(function (b) {
+          b.addEventListener("click", function () {
+            afsType = b.getAttribute("data-type");
+            UI.qsa("[data-type]", document.getElementById("afsType")).forEach(function (x) { x.classList.remove("on"); });
+            b.classList.add("on");
+          });
+        });
+        document.getElementById("afsClose").addEventListener("click", function () { closeAfs(); resetAfs(); });
+        document.getElementById("afsCancel").addEventListener("click", function () { closeAfs(); resetAfs(); });
+        document.getElementById("afsSubmit").addEventListener("click", submitAfs);
+        document.getElementById("afsMask").addEventListener("click", function () { closeAfs(); resetAfs(); });
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

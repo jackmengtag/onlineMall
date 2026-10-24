@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.InventoryTransactionMapper">
+
+    <resultMap type="InventoryTransaction" id="InventoryTransactionResult">
+        <id property="txId" column="tx_id"/>
+        <result property="inventoryId" column="inventory_id"/>
+        <result property="skuId" column="sku_id"/>
+        <result property="warehouseCode" column="warehouse_code"/>
+        <result property="txType" column="tx_type"/>
+        <result property="quantity" column="quantity"/>
+        <result property="beforeQty" column="before_qty"/>
+        <result property="afterQty" column="after_qty"/>
+        <result property="bizType" column="biz_type"/>
+        <result property="bizNo" column="biz_no"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="remark" column="remark"/>
+        <result property="skuCode" column="sku_code"/>
+    </resultMap>
+
+    <select id="selectList" parameterType="InventoryTransaction" resultMap="InventoryTransactionResult">
+        select t.tx_id, t.inventory_id, t.sku_id, t.warehouse_code, t.tx_type, t.quantity,
+               t.before_qty, t.after_qty, t.biz_type, t.biz_no, t.operator_id, t.create_time, t.remark,
+               s.sku_code
+        from inventory_transaction t
+        left join product_sku s on s.sku_id = t.sku_id
+        <where>
+            <if test="skuId != null">and t.sku_id = #{skuId}</if>
+            <if test="warehouseCode != null and warehouseCode != ''">and t.warehouse_code = #{warehouseCode}</if>
+            <if test="txType != null and txType != ''">and t.tx_type = #{txType}</if>
+            <if test="bizNo != null and bizNo != ''">and t.biz_no = #{bizNo}</if>
+        </where>
+        order by t.tx_id desc
+    </select>
+
+    <insert id="insertTransaction" parameterType="InventoryTransaction" useGeneratedKeys="true" keyProperty="txId">
+        insert into inventory_transaction (inventory_id, sku_id, warehouse_code, tx_type, quantity,
+            before_qty, after_qty, biz_type, biz_no, operator_id, create_time, remark)
+        values (#{inventoryId}, #{skuId}, #{warehouseCode}, #{txType}, #{quantity},
+            #{beforeQty}, #{afterQty}, #{bizType}, #{bizNo}, #{operatorId}, sysdate(), #{remark})
+    </insert>
+
+</mapper>

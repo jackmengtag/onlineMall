@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.ChannelListingMapper">
+
+    <resultMap type="ChannelListing" id="ChannelListingResult">
+        <id     property="listingId"         column="listing_id"          />
+        <result property="channelCode"       column="channel_code"        />
+        <result property="externalProductId" column="external_product_id" />
+        <result property="externalSkuId"     column="external_sku_id"     />
+        <result property="skuId"             column="sku_id"              />
+        <result property="listingStatus"     column="listing_status"      />
+        <result property="payloadJson"       column="payload_json"        />
+        <result property="lastSyncTime"      column="last_sync_time"      />
+        <result property="createBy"          column="create_by"           />
+        <result property="createTime"        column="create_time"         />
+        <result property="updateBy"          column="update_by"           />
+        <result property="updateTime"        column="update_time"         />
+        <result property="remark"            column="remark"              />
+        <result property="skuCode"           column="sku_code"            />
+    </resultMap>
+
+    <sql id="selectChannelListingVo">
+        select l.listing_id, l.channel_code, l.external_product_id, l.external_sku_id, l.sku_id,
+               l.listing_status, l.payload_json, l.last_sync_time, l.create_by, l.create_time,
+               l.update_by, l.update_time, l.remark, k.sku_code
+        from channel_listing l
+        left join product_sku k on k.sku_id = l.sku_id
+    </sql>
+
+    <select id="selectChannelListingById" parameterType="Long" resultMap="ChannelListingResult">
+        <include refid="selectChannelListingVo"/>
+        where l.listing_id = #{listingId}
+    </select>
+
+    <select id="selectChannelListingByUnique" resultMap="ChannelListingResult">
+        <include refid="selectChannelListingVo"/>
+        where l.channel_code = #{channelCode}
+          and l.external_product_id = #{externalProductId}
+        <choose>
+            <when test="externalSkuId != null and externalSkuId != ''">and l.external_sku_id = #{externalSkuId}</when>
+            <otherwise>and (l.external_sku_id is null or l.external_sku_id = '')</otherwise>
+        </choose>
+        limit 1
+    </select>
+
+    <select id="selectChannelListingList" parameterType="ChannelListing" resultMap="ChannelListingResult">
+        <include refid="selectChannelListingVo"/>
+        <where>
+            <if test="channelCode != null and channelCode != ''">and l.channel_code = #{channelCode}</if>
+            <if test="externalProductId != null and externalProductId != ''">and l.external_product_id = #{externalProductId}</if>
+            <if test="externalSkuId != null and externalSkuId != ''">and l.external_sku_id = #{externalSkuId}</if>
+            <if test="skuId != null">and l.sku_id = #{skuId}</if>
+            <if test="listingStatus != null and listingStatus != ''">and l.listing_status = #{listingStatus}</if>
+        </where>
+        order by l.listing_id desc
+    </select>
+
+    <insert id="insertChannelListing" parameterType="ChannelListing" useGeneratedKeys="true" keyProperty="listingId">
+        insert into channel_listing (
+            channel_code,
+            external_product_id,
+            <if test="externalSkuId != null">external_sku_id,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="listingStatus != null and listingStatus != ''">listing_status,</if>
+            <if test="payloadJson != null and payloadJson != ''">payload_json,</if>
+            <if test="lastSyncTime != null">last_sync_time,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        ) values (
+            #{channelCode},
+            #{externalProductId},
+            <if test="externalSkuId != null">#{externalSkuId},</if>
+            <if test="skuId != null">#{skuId},</if>
+            <if test="listingStatus != null and listingStatus != ''">#{listingStatus},</if>
+            <if test="payloadJson != null and payloadJson != ''">#{payloadJson},</if>
+            <if test="lastSyncTime != null">#{lastSyncTime},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateChannelListing" parameterType="ChannelListing">
+        update channel_listing
+        <set>
+            <if test="channelCode != null and channelCode != ''">channel_code = #{channelCode},</if>
+            <if test="externalProductId != null and externalProductId != ''">external_product_id = #{externalProductId},</if>
+            <if test="externalSkuId != null">external_sku_id = #{externalSkuId},</if>
+            <if test="skuId != null">sku_id = #{skuId},</if>
+            <if test="listingStatus != null and listingStatus != ''">listing_status = #{listingStatus},</if>
+            <if test="payloadJson != null and payloadJson != ''">payload_json = #{payloadJson},</if>
+            <if test="lastSyncTime != null">last_sync_time = #{lastSyncTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where listing_id = #{listingId}
+    </update>
+
+    <update id="updateSync">
+        update channel_listing
+        set listing_status = #{listingStatus},
+            last_sync_time = sysdate(),
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        where listing_id = #{listingId}
+    </update>
+
+    <delete id="deleteChannelListingByIds" parameterType="Long">
+        delete from channel_listing where listing_id in
+        <foreach item="listingId" collection="array" open="(" separator="," close=")">
+            #{listingId}
+        </foreach>
+    </delete>
+
+</mapper>

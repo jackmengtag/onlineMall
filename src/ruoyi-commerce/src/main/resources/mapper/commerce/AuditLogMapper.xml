@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.AuditLogMapper">
+
+    <resultMap type="AuditLog" id="AuditLogResult">
+        <id property="auditId" column="audit_id"/>
+        <result property="shopId" column="shop_id"/>
+        <result property="module" column="module"/>
+        <result property="action" column="action"/>
+        <result property="targetType" column="target_type"/>
+        <result property="targetId" column="target_id"/>
+        <result property="operator" column="operator"/>
+        <result property="detail" column="detail"/>
+        <result property="ip" column="ip"/>
+        <result property="result" column="result"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="AuditLog" useGeneratedKeys="true" keyProperty="auditId">
+        insert into audit_log (shop_id, module, action, target_type, target_id, operator, detail, ip, result, create_time)
+        values (#{shopId}, #{module}, #{action}, #{targetType}, #{targetId}, #{operator}, #{detail}, #{ip},
+                #{result}, sysdate())
+    </insert>
+
+    <select id="selectList" resultMap="AuditLogResult">
+        select audit_id, shop_id, module, action, target_type, target_id, operator, detail, ip, result, create_time
+        from audit_log
+        <where>
+            <if test="shopId != null">and shop_id = #{shopId}</if>
+            <if test="module != null and module != ''">and module = #{module}</if>
+            <if test="beginTime != null">and create_time &gt;= #{beginTime}</if>
+            <if test="endTime != null">and create_time &lt;= #{endTime}</if>
+        </where>
+        order by audit_id desc
+    </select>
+
+</mapper>

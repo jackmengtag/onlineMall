@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>账户中心 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="account">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main">
+    <div class="container section">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">MY ACCOUNT</div>
+          <h1 class="h1 mt-8">账户中心</h1>
+          <p class="lead">管理个人信息、收货地址和订单入口。</p>
+        </div>
+        <button class="btn ghost" id="logout" type="button">退出登录</button>
+      </div>
+
+      <div class="grid cols-3">
+        <section class="panel">
+          <div class="panel-head"><div class="panel-title">个人信息</div></div>
+          <div class="panel-body">
+            <form id="profile-form" class="stack">
+              <label class="field"><span>显示名称</span><input class="input" id="profile-name" readonly></label>
+              <label class="field"><span>客户编号</span><input class="input" id="profile-no" readonly></label>
+              <label class="field"><span>邮箱</span><input class="input" id="profile-email" type="email" readonly></label>
+              <label class="field"><span>联系电话</span><input class="input" id="profile-phone" readonly></label>
+              <div class="tiny muted">账户信息由平台统一维护，如需修改请联系客服。</div>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div class="panel-title">账户快捷入口</div></div>
+          <div class="panel-body stack">
+            <a class="btn ghost" href="orders.html">查看我的订单</a>
+            <a class="btn ghost" href="index.html#catalog">继续选购商品</a>
+            <a class="btn ghost" href="cart.html">前往购物车</a>
+            <button class="btn ghost" id="currency" type="button">当前币种：USD</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title">收货地址</div>
+            <button class="btn ghost sm" id="add-address" type="button">新增地址</button>
+          </div>
+          <div class="panel-body" id="addresses"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <div class="modal" id="address-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 class="h3">新增收货地址</h3>
+        <button class="icon-btn" id="close-address" type="button">×</button>
+      </div>
+      <form id="address-form" class="modal-body stack">
+        <label class="field"><span>收件人</span><input class="input" id="address-name"></label>
+        <label class="field"><span>联系电话</span><input class="input" id="address-phone" placeholder="如 +1 415-555-0101"></label>
+        <label class="field"><span>国家 / 地区</span>
+          <select class="select" id="address-country">
+            <option value="US">美国</option>
+            <option value="DE">德国</option>
+            <option value="SG">新加坡</option>
+            <option value="IT">意大利</option>
+          </select>
+        </label>
+        <label class="field"><span>城市</span><input class="input" id="address-city" placeholder="如 San Francisco"></label>
+        <label class="field"><span>邮编</span><input class="input" id="address-zip"></label>
+        <label class="field"><span>详细地址</span><input class="input" id="address-line" placeholder="街道 / 门牌"></label>
+        <div class="modal-foot">
+          <button class="btn" id="cancel-address" type="button">取消</button>
+          <button class="btn primary" type="submit">保存地址</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      if (!UI.requireAuth("account.html")) return;
+
+      var list = document.getElementById("addresses");
+      var modal = document.getElementById("address-modal");
+      var addresses = [];
+
+      function addrText(a) {
+        return [a.addressLine1, a.addressLine2, a.city, a.stateCode, a.postalCode, a.countryCode]
+          .filter(Boolean).join(", ");
+      }
+
+      function renderAddresses() {
+        if (!addresses.length) {
+          list.innerHTML = '<div class="empty"><span class="tiny">暂未保存收货地址</span></div>';
+          return;
+        }
+        list.innerHTML = addresses.map(function (a) {
+          return '<div class="address-row mb-16">' +
+            '<div class="row between" style="gap:8px"><b>' + FMT.esc(a.recipientName || "-") + "</b>" +
+              (a.isDefault ? '<span class="badge success"><i class="dt"></i>默认</span>' : "") +
+            "</div>" +
+            '<div class="tiny muted mt-8">' + FMT.esc(a.recipientPhone || "-") + " · " + FMT.esc(addrText(a)) + "</div>" +
+          "</div>";
+        }).join("");
+      }
+
+      async function loadAccount() {
+        try {
+          var res = await API.account();
+          var c = res.data || {};
+          document.getElementById("profile-name").value = c.displayName || "";
+          document.getElementById("profile-no").value = c.customerNo || "";
+          document.getElementById("profile-email").value = c.email || "";
+          document.getElementById("profile-phone").value = c.phone || "";
+        } catch (e) {
+          UI.toast(e.message || "账户信息加载失败", "error");
+        }
+      }
+
+      async function loadAddresses() {
+        try {
+          var res = await API.fetchAddresses();
+          addresses = res.data || [];
+          renderAddresses();
+        } catch (e) {
+          list.innerHTML = '<div class="empty"><span class="tiny">' + FMT.esc(e.message || "地址加载失败") + "</span></div>";
+        }
+      }
+
+      document.getElementById("profile-form").onsubmit = function (e) { e.preventDefault(); };
+
+      document.getElementById("logout").onclick = async function () {
+        await API.logout();
+        location.href = "login.html";
+      };
+
+      var currencyBtn = document.getElementById("currency");
+      function syncCurrency() { currencyBtn.textContent = "当前币种：" + FMT.currency(); }
+      syncCurrency();
+      currencyBtn.onclick = function () {
+        var order = ["USD", "EUR", "CNY"];
+        var cur = FMT.currency();
+        var next = order[(order.indexOf(cur) + 1) % order.length];
+        FMT.setCurrency(next);
+        syncCurrency();
+        UI.toast("已切换结算币种：" + next, "info");
+      };
+
+      document.getElementById("add-address").onclick = function () { modal.classList.add("open"); };
+      function closeModal() { modal.classList.remove("open"); }
+      document.getElementById("close-address").onclick = closeModal;
+      document.getElementById("cancel-address").onclick = closeModal;
+
+      document.getElementById("address-form").onsubmit = async function (e) {
+        e.preventDefault();
+        var payload = {
+          recipientName: document.getElementById("address-name").value.trim(),
+          recipientPhone: document.getElementById("address-phone").value.trim(),
+          countryCode: document.getElementById("address-country").value,
+          city: document.getElementById("address-city").value.trim(),
+          postalCode: document.getElementById("address-zip").value.trim(),
+          addressLine1: document.getElementById("address-line").value.trim(),
+          isDefault: addresses.length === 0
+        };
+        if (!payload.recipientName || !payload.city || !payload.addressLine1) {
+          UI.toast("请填写收件人、城市与详细地址", "error");
+          return;
+        }
+        var btn = this.querySelector("button[type=submit]");
+        btn.disabled = true;
+        try {
+          await API.addAddress(payload);
+          UI.toast("收货地址已保存");
+          closeModal();
+          this.reset();
+          await loadAddresses();
+        } catch (err) {
+          UI.toast(err.message || "保存失败，请稍后重试", "error");
+        } finally {
+          btn.disabled = false;
+        }
+      };
+
+      loadAccount();
+      loadAddresses();
+    })();
+  </script>
+</body>
+</html>

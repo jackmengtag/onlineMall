@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>登录 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="login">
+  <header class="site-header" id="site-header"></header>
+  <main class="site-main">
+    <div class="container section">
+      <div class="auth-card panel">
+        <div class="panel-body">
+          <div class="eyebrow">NOVA CROSS ACCOUNT</div>
+          <h1 class="h2 mt-8">登录 NovaCross</h1>
+          <p class="muted">登录后查看订单、保存地址并管理账户。</p>
+          <form id="login-form" class="stack mt-24">
+            <label class="field">
+              <span>邮箱</span>
+              <input class="input" id="email" type="email" autocomplete="email" placeholder="you@example.com">
+              <small class="error" id="email-error"></small>
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <input class="input" id="password" type="password" autocomplete="current-password" placeholder="请输入密码">
+              <small class="error" id="password-error"></small>
+            </label>
+            <label class="check-row"><input id="remember" type="checkbox" checked><span>保持登录</span></label>
+            <button class="btn primary lg block" type="submit" id="submitBtn">登录</button>
+          </form>
+          <div class="auth-demo tiny muted mt-16">演示账号：alice@example.com / admin123</div>
+          <p class="tiny muted mt-16">登录状态保存于本机，令牌 7 天内有效。</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var form = document.getElementById("login-form");
+      var emailEl = document.getElementById("email");
+      var passwordEl = document.getElementById("password");
+      var btn = document.getElementById("submitBtn");
+
+      /* 已登录时直接进入账户中心 */
+      if (UI.session()) {
+        location.replace("account.html");
+        return;
+      }
+
+      function clearErrors() {
+        document.getElementById("email-error").textContent = "";
+        document.getElementById("password-error").textContent = "";
+      }
+
+      form.onsubmit = async function (e) {
+        e.preventDefault();
+        clearErrors();
+        var email = emailEl.value.trim().toLowerCase();
+        var password = passwordEl.value;
+        var ok = true;
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+          document.getElementById("email-error").textContent = "请输入有效邮箱";
+          ok = false;
+        }
+        if (!password) {
+          document.getElementById("password-error").textContent = "请输入密码";
+          ok = false;
+        }
+        if (!ok) return;
+
+        btn.disabled = true;
+        btn.textContent = "登录中…";
+        try {
+          await API.login(email, password);
+          UI.toast("登录成功");
+          var next = new URLSearchParams(location.search).get("redirect") || "index.html";
+          /* 仅允许站内页面跳转，避免开放重定向 */
+          if (!/^[a-z0-9_-]+\.html(\?[^#]*)?(#.*)?$/i.test(next)) next = "index.html";
+          setTimeout(function () { location.href = next; }, 400);
+        } catch (err) {
+          document.getElementById("password-error").textContent = err.message || "登录失败，请稍后再试";
+          UI.toast(err.message || "登录失败", "error");
+          btn.disabled = false;
+          btn.textContent = "登录";
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

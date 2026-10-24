@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.CartItemMapper">
+
+    <resultMap type="CartItem" id="CartItemResult">
+        <id     property="cartItemId" column="cart_item_id" />
+        <result property="cartId"     column="cart_id"      />
+        <result property="skuId"      column="sku_id"       />
+        <result property="skuCode"    column="sku_code"     />
+        <result property="quantity"   column="quantity"     />
+        <result property="selected"   column="selected"     />
+        <result property="createBy"   column="create_by"    />
+        <result property="createTime" column="create_time"  />
+        <result property="updateBy"   column="update_by"    />
+        <result property="updateTime" column="update_time"  />
+        <result property="remark"     column="remark"       />
+    </resultMap>
+
+    <sql id="selectCartItemVo">
+        select cart_item_id, cart_id, sku_id, sku_code, quantity, selected,
+               create_by, create_time, update_by, update_time, remark
+        from cart_item
+    </sql>
+
+    <select id="selectByCartId" parameterType="Long" resultMap="CartItemResult">
+        <include refid="selectCartItemVo"/>
+        where cart_id = #{cartId}
+        order by cart_item_id asc
+    </select>
+
+    <select id="selectByCartAndSku" resultMap="CartItemResult">
+        <include refid="selectCartItemVo"/>
+        where cart_id = #{cartId} and sku_id = #{skuId} limit 1
+    </select>
+
+    <select id="selectCartItemById" parameterType="Long" resultMap="CartItemResult">
+        <include refid="selectCartItemVo"/>
+        where cart_item_id = #{cartItemId}
+    </select>
+
+    <insert id="insertCartItem" parameterType="CartItem" useGeneratedKeys="true" keyProperty="cartItemId">
+        insert into cart_item (
+            cart_id,
+            sku_id,
+            <if test="skuCode != null">sku_code,</if>
+            quantity,
+            <if test="selected != null">selected,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        ) values (
+            #{cartId},
+            #{skuId},
+            <if test="skuCode != null">#{skuCode},</if>
+            #{quantity},
+            <if test="selected != null">#{selected},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateCartItem" parameterType="CartItem">
+        update cart_item
+        <set>
+            <if test="skuCode != null">sku_code = #{skuCode},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="selected != null">selected = #{selected},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where cart_item_id = #{cartItemId}
+    </update>
+
+    <delete id="deleteCartItemById" parameterType="Long">
+        delete from cart_item where cart_item_id = #{cartItemId}
+    </delete>
+
+    <delete id="deleteByCartId" parameterType="Long">
+        delete from cart_item where cart_id = #{cartId}
+    </delete>
+
+</mapper>

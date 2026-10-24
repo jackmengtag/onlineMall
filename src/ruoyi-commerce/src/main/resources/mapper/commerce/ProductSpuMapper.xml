@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.ProductSpuMapper">
+
+    <resultMap type="ProductSpu" id="ProductSpuResult">
+        <id     property="spuId"              column="spu_id"              />
+        <result property="shopId"             column="shop_id"             />
+        <result property="spuCode"            column="spu_code"            />
+        <result property="brandId"            column="brand_id"            />
+        <result property="brandName"          column="brand_name"          />
+        <result property="categoryId"         column="category_id"         />
+        <result property="categoryKey"        column="category_key"        />
+        <result property="categoryName"       column="category_name"       />
+        <result property="defaultName"        column="default_name"        />
+        <result property="nameEn"             column="name_en"             />
+        <result property="defaultDescription" column="default_description" />
+        <result property="status"             column="status"              />
+        <result property="defaultImageUrl"    column="default_image_url"   />
+        <result property="badge"              column="badge"               />
+        <result property="rating"             column="rating"              />
+        <result property="reviewCount"        column="review_count"        />
+        <result property="soldCount"          column="sold_count"          />
+        <result property="tagsJson"           column="tags_json"           />
+        <result property="imagesJson"         column="images_json"         />
+        <result property="specsJson"          column="specs_json"          />
+        <result property="colorsJson"         column="colors_json"         />
+        <result property="sizesJson"          column="sizes_json"          />
+        <result property="createBy"           column="create_by"           />
+        <result property="createTime"         column="create_time"         />
+        <result property="updateBy"           column="update_by"           />
+        <result property="updateTime"         column="update_time"         />
+        <result property="remark"             column="remark"              />
+        <result property="skuCount"           column="sku_count"           />
+    </resultMap>
+
+    <sql id="selectProductSpuVo">
+        select p.spu_id, p.shop_id, p.spu_code, p.brand_id, p.brand_name, p.category_id, p.category_key,
+               p.category_name, p.default_name, p.name_en, p.default_description, p.status,
+               p.default_image_url, p.badge, p.rating, p.review_count, p.sold_count, p.tags_json,
+               p.images_json, p.specs_json, p.colors_json, p.sizes_json, p.create_by, p.create_time,
+               p.update_by, p.update_time, p.remark,
+               (select count(1) from product_sku k where k.spu_id = p.spu_id) as sku_count
+        from product_spu p
+    </sql>
+
+    <select id="selectProductSpuById" parameterType="Long" resultMap="ProductSpuResult">
+        <include refid="selectProductSpuVo"/>
+        where p.spu_id = #{spuId}
+    </select>
+
+    <select id="selectProductSpuByCode" parameterType="String" resultMap="ProductSpuResult">
+        <include refid="selectProductSpuVo"/>
+        where p.spu_code = #{spuCode} limit 1
+    </select>
+
+    <select id="selectProductSpuList" parameterType="ProductSpu" resultMap="ProductSpuResult">
+        <include refid="selectProductSpuVo"/>
+        <where>
+            <if test="spuCode != null and spuCode != ''">and p.spu_code like concat('%', #{spuCode}, '%')</if>
+            <if test="defaultName != null and defaultName != ''">and p.default_name like concat('%', #{defaultName}, '%')</if>
+            <if test="status != null and status != ''">and p.status = #{status}</if>
+            <if test="categoryKey != null and categoryKey != ''">and p.category_key = #{categoryKey}</if>
+            <if test="shopId != null">and p.shop_id = #{shopId}</if>
+            <if test="brandId != null">and p.brand_id = #{brandId}</if>
+            <if test="categoryId != null">and p.category_id = #{categoryId}</if>
+        </where>
+        order by p.spu_id desc
+    </select>
+
+    <insert id="insertProductSpu" parameterType="ProductSpu" useGeneratedKeys="true" keyProperty="spuId">
+        insert into product_spu (
+            <if test="shopId != null">shop_id,</if>
+            spu_code,
+            <if test="brandId != null">brand_id,</if>
+            <if test="brandName != null">brand_name,</if>
+            <if test="categoryId != null">category_id,</if>
+            <if test="categoryKey != null">category_key,</if>
+            <if test="categoryName != null">category_name,</if>
+            default_name,
+            <if test="nameEn != null">name_en,</if>
+            <if test="defaultDescription != null">default_description,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="defaultImageUrl != null">default_image_url,</if>
+            <if test="badge != null">badge,</if>
+            <if test="rating != null">rating,</if>
+            <if test="reviewCount != null">review_count,</if>
+            <if test="soldCount != null">sold_count,</if>
+            <if test="tagsJson != null and tagsJson != ''">tags_json,</if>
+            <if test="imagesJson != null and imagesJson != ''">images_json,</if>
+            <if test="specsJson != null and specsJson != ''">specs_json,</if>
+            <if test="colorsJson != null and colorsJson != ''">colors_json,</if>
+            <if test="sizesJson != null and sizesJson != ''">sizes_json,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        ) values (
+            <if test="shopId != null">#{shopId},</if>
+            #{spuCode},
+            <if test="brandId != null">#{brandId},</if>
+            <if test="brandName != null">#{brandName},</if>
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="categoryKey != null">#{categoryKey},</if>
+            <if test="categoryName != null">#{categoryName},</if>
+            #{defaultName},
+            <if test="nameEn != null">#{nameEn},</if>
+            <if test="defaultDescription != null">#{defaultDescription},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="defaultImageUrl != null">#{defaultImageUrl},</if>
+            <if test="badge != null">#{badge},</if>
+            <if test="rating != null">#{rating},</if>
+            <if test="reviewCount != null">#{reviewCount},</if>
+            <if test="soldCount != null">#{soldCount},</if>
+            <if test="tagsJson != null and tagsJson != ''">#{tagsJson},</if>
+            <if test="imagesJson != null and imagesJson != ''">#{imagesJson},</if>
+            <if test="specsJson != null and specsJson != ''">#{specsJson},</if>
+            <if test="colorsJson != null and colorsJson != ''">#{colorsJson},</if>
+            <if test="sizesJson != null and sizesJson != ''">#{sizesJson},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateProductSpu" parameterType="ProductSpu">
+        update product_spu
+        <set>
+            <if test="shopId != null">shop_id = #{shopId},</if>
+            <if test="spuCode != null and spuCode != ''">spu_code = #{spuCode},</if>
+            <if test="brandId != null">brand_id = #{brandId},</if>
+            <if test="brandName != null">brand_name = #{brandName},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="categoryKey != null">category_key = #{categoryKey},</if>
+            <if test="categoryName != null">category_name = #{categoryName},</if>
+            <if test="defaultName != null and defaultName != ''">default_name = #{defaultName},</if>
+            <if test="nameEn != null">name_en = #{nameEn},</if>
+            <if test="defaultDescription != null">default_description = #{defaultDescription},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="defaultImageUrl != null">default_image_url = #{defaultImageUrl},</if>
+            <if test="badge != null">badge = #{badge},</if>
+            <if test="rating != null">rating = #{rating},</if>
+            <if test="reviewCount != null">review_count = #{reviewCount},</if>
+            <if test="soldCount != null">sold_count = #{soldCount},</if>
+            <if test="tagsJson != null and tagsJson != ''">tags_json = #{tagsJson},</if>
+            <if test="imagesJson != null and imagesJson != ''">images_json = #{imagesJson},</if>
+            <if test="specsJson != null and specsJson != ''">specs_json = #{specsJson},</if>
+            <if test="colorsJson != null and colorsJson != ''">colors_json = #{colorsJson},</if>
+            <if test="sizesJson != null and sizesJson != ''">sizes_json = #{sizesJson},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where spu_id = #{spuId}
+    </update>
+
+    <update id="updateStatus">
+        update product_spu
+        set status = #{status},
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        where spu_id = #{spuId}
+    </update>
+
+    <delete id="deleteProductSpuByIds" parameterType="Long">
+        delete from product_spu where spu_id in
+        <foreach item="spuId" collection="array" open="(" separator="," close=")">
+            #{spuId}
+        </foreach>
+    </delete>
+
+</mapper>

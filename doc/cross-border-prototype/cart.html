@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>购物车与结算 · NovaCross 诺瓦跨境优选</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="cart">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container section">
+
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Shopping Cart</div>
+          <h2 class="h2 mt-8">购物车与结算</h2>
+        </div>
+        <a class="btn ghost sm" href="index.html#catalog">继续选购</a>
+      </div>
+
+      <div id="cartRoot"></div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var couponApplied = false;
+      var couponCode = "";
+      var FREE_SHIP = 10000;   /* 小计 ≥ $100 免运费（分） */
+      var SHIP_FEE = 599;      /* 否则 $5.99（分） */
+      var TAX_RATE = 0.08;     /* 税费 8% */
+      var COUPON_AMOUNT = 1500;/* NOVA15 减 $15（分） */
+      var AUTO_THRESHOLD = 15000; /* 满 $150 自动减 $15（分） */
+
+      /* ---------- 空购物车 ---------- */
+      function emptyHTML() {
+        return '<div class="panel"><div class="panel-body"><div class="empty">' +
+          '<div class="empty-glyph">' + icon("cart", { size: 24 }) + "</div>" +
+          "<b>购物车还是空的</b>" +
+          '<span class="tiny">挑几件跨境好物，开启全球直送</span>' +
+          '<a class="btn primary mt-12" href="index.html">去选购</a>' +
+        "</div></div></div>";
+      }
+
+      /* ---------- 单行商品 ---------- */
+      function itemRow(d) {
+        return '<div class="citem">' +
+          UI.imgTag(d.product.images[0], d.product.name, "citem-img", d.product.name) +
+          "<div>" +
+            '<div class="citem-name">' + FMT.esc(d.product.name) + "</div>" +
+            '<div class="citem-spec">' + (d.spec ? FMT.esc(d.spec) : "默认规格") + " · SKU " + FMT.esc(d.product.sku) + "</div>" +
+            '<div class="tiny muted mt-8">单价 ' + FMT.money(d.unit, "USD") + "</div>" +
+          "</div>" +
+          '<div class="stack" style="align-items:flex-end;gap:10px">' +
+            '<div class="row">' +
+              '<div class="qty">' +
+                '<button type="button" data-q="-1" data-i="' + d.idx + '" aria-label="减少">' + icon("minus", { size: 14 }) + "</button>" +
+                '<input type="text" inputmode="numeric" value="' + d.qty + '" data-i="' + d.idx + '" aria-label="数量">' +
+                '<button type="button" data-q="1" data-i="' + d.idx + '" aria-label="增加">' + icon("plus", { size: 14 }) + "</button>" +
+              "</div>" +
+              '<button class="icon-btn" type="button" data-del="' + d.idx + '" title="删除">' + icon("trash", { size: 16 }) + "</button>" +
+            "</div>" +
+            '<div class="num" style="color:var(--accent-600);font-size:15px">' + FMT.money(d.line, "USD") + "</div>" +
+          "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 布局（含空容器） ---------- */
+      function layoutHTML() {
+        return '<div class="cart-layout">' +
+          '<div class="stack">' +
+            '<div class="panel">' +
+              '<div class="panel-head"><div class="panel-title">' + icon("cart", { size: 16 }) + '商品明细' +
+                '<span class="badge neutral" id="itemCount"><i class="dt"></i>0 件</span></div></div>' +
+              '<div class="panel-body" id="cartItems"></div>' +
+            "</div>" +
+            formPanelHTML() +
+          "</div>" +
+          '<div class="panel summary">' +
+            '<div class="panel-head"><div class="panel-title">' + icon("receipt", { size: 16 }) + "订单摘要</div></div>" +
+            '<div class="panel-body" id="summaryBody"></div>' +
+            '<div class="panel-foot">' +
+              '<button class="btn accent lg block" type="button" id="submitBtn">' + icon("check-circle", { size: 17 }) + "提交订单</button>" +
+            "</div>" +
+          "</div>" +
+        "</div>";
+      }
+
+      /* ---------- 结算表单 ---------- */
+      function field(id, label, type, ph) {
+        return '<div class="field"><label for="' + id + '">' + label + "</label>" +
+          '<input class="input" id="' + id + '" type="' + type + '" placeholder="' + (ph || "") + '" autocomplete="off">' +
+          '<span class="tiny" style="color:var(--danger);display:none" id="err-' + id + '"></span></div>';
+      }
+      function selectField(id, label, opts) {
+        var o = opts.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + "</option>"; }).join("");
+        return '<div class="field"><label for="' + id + '">' + label + "</label>" +
+          '<select class="select" id="' + id + '">' + o + "</select>" +
+          '<span class="tiny" style="color:var(--danger);display:none" id="err-' + id + '"></span></div>';
+      }
+      function formPanelHTML() {
+        return '<div class="panel">' +
+          '<div class="panel-head"><div class="panel-title">' + icon("map-pin", { size: 16 }) + "收件信息</div>" +
+            '<span class="tiny muted">用于跨境申报与派送</span></div>' +
+          '<div class="panel-body">' +
+            '<div class="grid cols-2" style="gap:14px 18px">' +
+              field("fName", "收件人", "text", "如 Emily Carter") +
+              field("fPhone", "联系电话", "text", "如 +1 310-555-0132") +
+              selectField("fCountry", "国家 / 地区", [["US", "美国 United States"], ["DE", "德国 Germany"], ["SG", "新加坡 Singapore"], ["IT", "意大利 Italy"]]) +
+              field("fZip", "邮编", "text", "如 90026") +
+            "</div>" +
+            '<div class="field mt-16"><label for="fAddr">详细地址</label>' +
+              '<textarea class="textarea" id="fAddr" placeholder="街道 / 门牌 / 城市 / 州省，如 1420 Sunset Blvd, Los Angeles, CA"></textarea>' +
+              '<span class="tiny" style="color:var(--danger);display:none" id="err-fAddr"></span></div>' +
+          "</div></div>";
+      }
+
+      /* ---------- 金额计算 ---------- */
+      function calc() {
+        var subtotal = Cart.subtotal();
+        var shipping = subtotal >= FREE_SHIP ? 0 : SHIP_FEE;
+        var tax = Math.round(subtotal * TAX_RATE);
+        var coupon = couponApplied ? COUPON_AMOUNT : 0;
+        var auto = subtotal >= AUTO_THRESHOLD ? COUPON_AMOUNT : 0;
+        var discount = Math.max(coupon, auto);
+        var total = Math.max(0, subtotal - discount + shipping + tax);
+        return { subtotal: subtotal, shipping: shipping, tax: tax, discount: discount, total: total, auto: auto, coupon: coupon };
+      }
+
+      function sumRow(label, value) {
+        return '<div class="sum-row"><span>' + label + "</span><span>" + value + "</span></div>";
+      }
+
+      /* ---------- 摘要 ---------- */
+      function renderSummary() {
+        var c = calc();
+        var disLabel = couponApplied ? "优惠（NOVA15）" : (c.auto ? "优惠（满 $150 减 $15）" : "优惠");
+        document.getElementById("summaryBody").innerHTML =
+          sumRow("小计（" + Cart.count() + " 件）", FMT.money(c.subtotal, "USD")) +
+          sumRow(disLabel, c.discount ? "-" + FMT.money(c.discount, "USD") : FMT.money(0, "USD")) +
+          sumRow("运费", c.shipping ? FMT.money(c.shipping, "USD") : '<span style="color:var(--success)">免运费</span>') +
+          sumRow("税费（8%）", FMT.money(c.tax, "USD")) +
+          '<div class="sum-row total"><span>合计</span><b>' + FMT.money(c.total, "USD") + "</b></div>" +
+          '<div class="row mt-16" style="gap:8px">' +
+            '<input class="input" id="couponInput" placeholder="优惠券码，如 NOVA15" value="' + FMT.esc(couponCode) + '" style="flex:1">' +
+            '<button class="btn sm" type="button" id="applyCoupon">应用</button>' +
+          "</div>" +
+          (couponApplied ? '<div class="tiny mt-8" style="color:var(--success)">' + icon("check-circle", { size: 13 }) + " 优惠券 NOVA15 已生效，立减 $15.00</div>" : "") +
+          '<div class="sum-note">结算币种 USD，金额为商品 USD 价格快照，与订单币种保持一致。<br>' +
+            "运费：小计 ≥ $100 免运费，否则 $5.99；税费：按小计 8% 试算并四舍五入到分。" +
+            "优惠：优惠券 <b>NOVA15</b> 减 $15，与「满 $150 自动减 $15」二选一取较大者。</div>";
+        bindCoupon();
+      }
+
+      function bindCoupon() {
+        var btn = document.getElementById("applyCoupon");
+        var input = document.getElementById("couponInput");
+        if (!btn || !input) return;
+        btn.addEventListener("click", function () {
+          var code = input.value.trim().toUpperCase();
+          couponCode = code;
+          if (code === "NOVA15") {
+            couponApplied = true;
+            UI.toast("优惠券 NOVA15 已生效，立减 $15");
+          } else {
+            couponApplied = false;
+            UI.toast(code ? "优惠券码无效" : "请输入优惠券码", "error");
+          }
+          renderSummary();
+        });
+      }
+
+      /* ---------- 明细渲染 + 事件 ---------- */
+      function renderItems() {
+        var detail = Cart.detail();
+        document.getElementById("itemCount").innerHTML = '<i class="dt"></i>' + Cart.count() + " 件";
+        document.getElementById("cartItems").innerHTML = detail.map(itemRow).join("");
+      }
+
+      function refresh() {
+        if (!Cart.detail().length) { render(); return; }
+        renderItems();
+        renderSummary();
+      }
+
+      function bindItems() {
+        var wrap = document.getElementById("cartItems");
+        wrap.addEventListener("click", function (e) {
+          var q = e.target.closest("[data-q]");
+          if (q) {
+            var i = parseInt(q.getAttribute("data-i"), 10);
+            var d = Cart.detail().find(function (x) { return x.idx === i; });
+            if (d) Cart.setQty(i, d.qty + parseInt(q.getAttribute("data-q"), 10));
+            refresh();
+            return;
+          }
+          var del = e.target.closest("[data-del]");
+          if (del) {
+            Cart.remove(parseInt(del.getAttribute("data-del"), 10));
+            UI.toast("已移除商品");
+            refresh();
+          }
+        });
+        wrap.addEventListener("change", function (e) {
+          var inp = e.target.closest("input[data-i]");
+          if (!inp) return;
+          var i = parseInt(inp.getAttribute("data-i"), 10);
+          var v = parseInt(String(inp.value).replace(/\D/g, ""), 10);
+          Cart.setQty(i, (isNaN(v) || v < 1) ? 1 : v);
+          refresh();
+        });
+      }
+
+      /* ---------- 表单校验 ---------- */
+      function bindForm() {
+        ["fName", "fPhone", "fCountry", "fAddr", "fZip"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          ["input", "change"].forEach(function (ev) {
+            el.addEventListener(ev, function () {
+              var err = document.getElementById("err-" + id);
+              if (err) err.style.display = "none";
+              el.style.borderColor = "";
+            });
+          });
+        });
+        document.getElementById("submitBtn").addEventListener("click", submitOrder);
+      }
+
+      function validate() {
+        var rules = [
+          { id: "fName", msg: "请填写收件人姓名" },
+          { id: "fPhone", msg: "请填写有效的联系电话" },
+          { id: "fCountry", msg: "请选择国家 / 地区" },
+          { id: "fAddr", msg: "请填写详细地址" },
+          { id: "fZip", msg: "请填写邮编" }
+        ];
+        var ok = true;
+        rules.forEach(function (r) {
+          var el = document.getElementById(r.id);
+          var err = document.getElementById("err-" + r.id);
+          var val = (el.value || "").trim();
+          var bad = !val || (r.id === "fPhone" && val.replace(/\D/g, "").length < 5);
+          if (bad) { ok = false; err.textContent = r.msg; err.style.display = "block"; el.style.borderColor = "var(--danger)"; }
+          else { err.style.display = "none"; el.style.borderColor = ""; }
+        });
+        if (!ok) UI.toast("请完善收件信息", "error");
+        return ok;
+      }
+
+      /* ---------- 时间格式 YYYY-MM-DD HH:mm ---------- */
+      function pad(n) { return n < 10 ? "0" + n : "" + n; }
+      function fmtTime(d) {
+        return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+          " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+      }
+
+      /* ---------- 提交订单 ---------- */
+      async function submitOrder() {
+        if (!UI.requireAuth("cart.html")) return;
+        if (!validate()) return;
+        var detail = Cart.detail();
+        if (!detail.length) { UI.toast("购物车为空", "error"); return; }
+
+        var btn = document.getElementById("submitBtn");
+        var label = btn.innerHTML;
+        btn.disabled = true;
+        btn.textContent = "提交中…";
+
+        var c = calc();
+        var country = document.getElementById("fCountry").value;
+        var name = document.getElementById("fName").value.trim();
+        var phone = document.getElementById("fPhone").value.trim();
+        var addr = document.getElementById("fAddr").value.trim();
+        var zip = document.getElementById("fZip").value.trim();
+
+        var items = detail.map(function (d) {
+          return {
+            productId: d.product.id, name: d.product.name, sku: d.product.sku,
+            image: d.product.images[0], spec: d.spec, qty: d.qty, unit: d.unit
+          };
+        });
+        var amounts = { subtotal: c.subtotal, discount: c.discount, shipping: c.shipping, tax: c.tax, total: c.total };
+
+        var res = await API.createOrder({
+          channel: "DIRECT", country: country, currency: "USD",
+          amounts: amounts, items: items,
+          snapshot: { recipient: name, phone: phone, addr: addr + (zip ? " " + zip : "") }
+        });
+
+        if (res.code !== 0) {
+          btn.disabled = false;
+          btn.innerHTML = label;
+          UI.toast("下单失败，请稍后再试", "error");
+          return;
+        }
+
+        var orderNo = res.data.orderNo;
+        var at = fmtTime(new Date());
+        var taxRule = country === "US" ? "US-CA-v2026.09" : country === "DE" ? "DE-VAT19-v2026.08" : "SG-GST9-v2026.07";
+        var order = {
+          no: orderNo, userId: UI.session().userId, channel: "DIRECT", country: country, currency: "USD",
+          status: "PENDING_PAYMENT", payStatus: "UNPAID", fulStatus: "UNFULFILLED", afsStatus: "NONE",
+          placedAt: at, paidAt: null,
+          amounts: amounts,
+          items: items,
+          pay: [], ful: [], ship: [],
+          history: [
+            { t: "订单创建", at: at, by: "系统", note: "独立站下单，已生成商品与价格快照" },
+            { t: "库存锁定", at: at, by: "库存中心", note: "已锁定库存" },
+            { t: "等待支付", at: at, by: "支付中心", note: "支付超时为 30 分钟" }
+          ],
+          snapshot: {
+            recipient: name, phone: phone, addr: addr, taxRule: taxRule,
+            rateVer: "FX-2026.10.12", rate: country === "US" ? 1 : 0.92
+          }
+        };
+
+        var arr;
+        try { arr = JSON.parse(localStorage.getItem("nc_local_orders") || "[]"); } catch (e) { arr = []; }
+        if (!Array.isArray(arr)) arr = [];
+        arr.unshift(order);
+        localStorage.setItem("nc_local_orders", JSON.stringify(arr));
+
+        Cart.clear();
+        UI.toast("下单成功，订单号 " + orderNo);
+        setTimeout(function () { location.href = "orders.html"; }, 600);
+      }
+
+      /* ---------- 全量渲染 ---------- */
+      function render() {
+        var root = document.getElementById("cartRoot");
+        if (!Cart.detail().length) { root.innerHTML = emptyHTML(); return; }
+        root.innerHTML = layoutHTML();
+        bindItems();
+        bindForm();
+        renderItems();
+        renderSummary();
+      }
+
+      /* ---------- 币种切换：重算并重渲染金额 ---------- */
+      document.addEventListener("currency:change", function () {
+        if (!Cart.detail().length) return;
+        renderItems();
+        renderSummary();
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

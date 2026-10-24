@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.InventoryMapper">
+
+    <resultMap type="Inventory" id="InventoryResult">
+        <id property="inventoryId" column="inventory_id"/>
+        <result property="shopId" column="shop_id"/>
+        <result property="skuId" column="sku_id"/>
+        <result property="warehouseCode" column="warehouse_code"/>
+        <result property="countryCode" column="country_code"/>
+        <result property="totalQty" column="total_qty"/>
+        <result property="lockedQty" column="locked_qty"/>
+        <result property="safetyQty" column="safety_qty"/>
+        <result property="version" column="version"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="skuCode" column="sku_code"/>
+        <result property="spuName" column="spu_name"/>
+    </resultMap>
+
+    <sql id="selectInventoryVo">
+        select i.inventory_id, i.shop_id, i.sku_id, i.warehouse_code, i.country_code,
+               i.total_qty, i.locked_qty, i.safety_qty, i.version,
+               i.create_by, i.create_time, i.update_by, i.update_time, i.remark,
+               s.sku_code, p.default_name as spu_name
+        from inventory i
+        left join product_sku s on s.sku_id = i.sku_id
+        left join product_spu p on p.spu_id = s.spu_id
+    </sql>
+
+    <select id="selectList" parameterType="Inventory" resultMap="InventoryResult">
+        <include refid="selectInventoryVo"/>
+        <where>
+            <if test="skuId != null">and i.sku_id = #{skuId}</if>
+            <if test="warehouseCode != null and warehouseCode != ''">and i.warehouse_code = #{warehouseCode}</if>
+            <if test="countryCode != null and countryCode != ''">and i.country_code = #{countryCode}</if>
+            <if test="shopId != null">and i.shop_id = #{shopId}</if>
+        </where>
+        order by i.inventory_id desc
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="InventoryResult">
+        <include refid="selectInventoryVo"/>
+        where i.inventory_id = #{inventoryId}
+    </select>
+
+    <select id="selectBySkuAndWarehouse" resultMap="InventoryResult">
+        select * from inventory
+        where sku_id = #{skuId} and warehouse_code = #{warehouseCode}
+        limit 1
+    </select>
+
+    <select id="selectAvailableBySkuId" parameterType="Long" resultMap="InventoryResult">
+        select * from inventory
+        where sku_id = #{skuId} and total_qty - locked_qty &gt; 0
+        order by (total_qty - locked_qty) desc, inventory_id asc
+    </select>
+
+    <insert id="insertInventory" parameterType="Inventory" useGeneratedKeys="true" keyProperty="inventoryId">
+        insert into inventory (shop_id, sku_id, warehouse_code, country_code, total_qty, locked_qty,
+            safety_qty, version, create_by, create_time, remark)
+        values (#{shopId}, #{skuId}, #{warehouseCode}, #{countryCode}, #{totalQty}, #{lockedQty},
+            #{safetyQty}, #{version}, #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="reserveQty">
+        update inventory
+        set locked_qty = locked_qty + #{quantity},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where inventory_id = #{inventoryId}
+          and total_qty - locked_qty &gt;= #{quantity}
+    </update>
+
+    <update id="releaseQty">
+        update inventory
+        set locked_qty = locked_qty - #{quantity},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where inventory_id = #{inventoryId}
+          and locked_qty &gt;= #{quantity}
+    </update>
+
+    <update id="deductQty">
+        update inventory
+        set total_qty = total_qty - #{quantity},
+            locked_qty = locked_qty - #{quantity},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where inventory_id = #{inventoryId}
+          and locked_qty &gt;= #{quantity}
+          and total_qty &gt;= #{quantity}
+    </update>
+
+    <update id="restoreQty">
+        update inventory
+        set total_qty = total_qty + #{quantity},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where inventory_id = #{inventoryId}
+    </update>
+
+    <update id="adjustQty">
+        update inventory
+        set total_qty = #{totalQty},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where inventory_id = #{inventoryId}
+    </update>
+
+</mapper>

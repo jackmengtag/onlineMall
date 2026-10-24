@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NovaCross 诺瓦跨境优选 · 全球直营商城</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="storefront" data-page="index">
+  <header class="site-header" id="site-header"></header>
+
+  <main class="site-main" id="app-content">
+    <div class="container">
+
+      <!-- Hero -->
+      <section class="hero">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="eyebrow" style="color:var(--gold-500)">跨境直营 · 全球发货</div>
+            <h1 class="mt-8">把中国好物，<em>直送</em>全球买家手中</h1>
+            <p>覆盖美国、欧洲与东南亚，支持 USD / EUR / CNY 多币种结算，海外仓直发与全程物流追踪，让跨境购物像本地购物一样简单。</p>
+            <div class="hero-cta">
+              <a class="btn accent lg" href="#catalog">开始选购</a>
+              <a class="btn lg" href="orders.html" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);color:#fff">查看我的订单</a>
+            </div>
+            <div class="hero-stats">
+              <div><b>120+</b><span>覆盖国家与地区</span></div>
+              <div><b>48h</b><span>海外仓平均出库</span></div>
+              <div><b>4.8</b><span>平台平均评分</span></div>
+            </div>
+          </div>
+          <div class="hero-art" id="heroArt"></div>
+        </div>
+      </section>
+
+      <!-- 服务承诺 -->
+      <section class="section">
+        <div class="grid cols-4 stagger">
+          <div class="card row" style="gap:12px">
+            <span class="kpi-glyph"></span>
+            <div><b>多币种结算</b><div class="tiny muted">USD / EUR / CNY 实时价格</div></div>
+          </div>
+          <div class="card row" style="gap:12px">
+            <span class="kpi-glyph accent"></span>
+            <div><b>多仓直发</b><div class="tiny muted">海外仓优先，就近履约</div></div>
+          </div>
+          <div class="card row" style="gap:12px">
+            <span class="kpi-glyph info"></span>
+            <div><b>全程物流追踪</b><div class="tiny muted">清关节点实时可见</div></div>
+          </div>
+          <div class="card row" style="gap:12px">
+            <span class="kpi-glyph gold"></span>
+            <div><b>跨境合规</b><div class="tiny muted">税费与申报透明</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 商品目录 -->
+      <section class="section" id="catalog">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Catalog</div>
+            <h2 class="h2 mt-8">全部商品</h2>
+          </div>
+          <div class="row">
+            <a class="btn ghost sm" href="orders.html">我的订单</a>
+            <a class="btn ghost sm" href="cart.html">前往购物车</a>
+          </div>
+        </div>
+
+        <div class="cat-rail mb-16" id="catRail"></div>
+
+        <div class="filterbar mb-16">
+          <label class="search-box" style="flex:1;min-width:220px">
+            <span id="searchIcon"></span>
+            <input type="search" id="q" placeholder="搜索商品名称 / 品牌（如 耳机、NovaSound）" aria-label="搜索商品">
+          </label>
+          <div class="filter-count" id="count">共 12 件商品</div>
+          <select class="select" id="sort" style="width:170px" aria-label="排序方式">
+            <option value="popular">综合排序</option>
+            <option value="sold">销量优先</option>
+            <option value="rating">评分优先</option>
+            <option value="price-asc">价格从低到高</option>
+            <option value="price-desc">价格从高到低</option>
+          </select>
+        </div>
+
+        <div class="pgrid stagger" id="pgrid"></div>
+        <div class="row" style="justify-content:center;margin-top:24px" id="pager"></div>
+      </section>
+
+      <!-- 常见问题 -->
+      <section class="section" id="faq">
+        <div class="section-head"><div><div class="eyebrow">Support</div><h2 class="h2 mt-8">跨境购物常见问题</h2></div></div>
+        <div class="grid cols-2">
+          <div class="panel"><div class="panel-body">
+            <h3 class="h4">关税与税费如何计算？</h3>
+            <p class="muted mt-8">结算时按目的地国家的税率规则版本自动试算，DDP（含税）订单由平台承担清关与缴税，订单明细中会展示税费快照。</p>
+          </div></div>
+          <div class="panel"><div class="panel-body">
+            <h3 class="h4">多久可以收到货？</h3>
+            <p class="muted mt-8">美国仓 / 德国仓 / 新加坡仓直发通常 2-5 个工作日；中国仓直发视清关情况约 7-12 个工作日，运单轨迹可全程查询。</p>
+          </div></div>
+          <div class="panel"><div class="panel-body">
+            <h3 class="h4">支持退换货吗？</h3>
+            <p class="muted mt-8">支持 30 天无理由退货（个别品类除外），在「我的订单」中提交售后申请，审核通过后原路退款或回补库存换货。</p>
+          </div></div>
+          <div class="panel"><div class="panel-body">
+            <h3 class="h4">多币种价格会变化吗？</h3>
+            <p class="muted mt-8">商品价格按区域与币种独立维护并锁定汇率版本，下单时以订单快照为准，后续汇率波动不影响已成交订单。</p>
+          </div></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="site-footer"></footer>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    /* ---- 首页：Hero 图 + 服务承诺图标 ---- */
+    document.getElementById("heroArt").innerHTML =
+      [DB.img("flat lay of cross-border e-commerce parcels and shipping boxes with a small world map, warm neutral tones, top view", "portrait_4_3"),
+       DB.img("smiling woman unboxing a delivered parcel at home, lifestyle photography, warm light", "landscape_4_3"),
+       DB.img("modern warehouse worker scanning a parcel with handheld device, logistics photography", "landscape_4_3")]
+      .map(function (s, i) { return '<img src="' + s + '" alt="跨境履约场景 ' + (i + 1) + '" loading="lazy">'; }).join("");
+
+    /* 服务承诺图标 */
+    document.querySelectorAll(".kpi-glyph").forEach(function (el, i) {
+      el.innerHTML = icon(["globe", "warehouse", "truck", "shield-check"][i] || "shield-check", { size: 18 });
+    });
+    document.getElementById("searchIcon").innerHTML = icon("search", { size: 16 });
+
+    /* ---- 分类筛选 ---- */
+    var state = { category: "all", sort: "popular", q: "", page: 1, size: 8 };
+    var firstLoad = true;
+    document.getElementById("catRail").innerHTML = DB.CATEGORIES.map(function (c) {
+      return '<button class="chip' + (c.key === "all" ? " active" : "") + '" data-cat="' + c.key + '">' + c.label + "</button>";
+    }).join("");
+    document.querySelectorAll("[data-cat]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        document.querySelectorAll("[data-cat]").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        state.category = btn.getAttribute("data-cat"); state.page = 1; load();
+      });
+    });
+
+    var qTimer;
+    document.getElementById("q").addEventListener("input", function (e) {
+      clearTimeout(qTimer);
+      qTimer = setTimeout(function () { state.q = e.target.value.trim(); state.page = 1; load(); }, 280);
+    });
+    document.getElementById("sort").addEventListener("change", function (e) { state.sort = e.target.value; state.page = 1; load(); });
+
+    function skeletons(n) {
+      var out = "";
+      for (var i = 0; i < n; i++) {
+        out += '<article class="pcard"><div class="pcard-media"><div class="skel" style="width:100%;height:100%;border-radius:0"></div></div>' +
+          '<div class="pcard-body"><div class="skel" style="width:40%"></div><div class="skel" style="width:90%"></div>' +
+          '<div class="skel" style="width:60%"></div><div class="skel" style="width:50%;height:20px"></div></div></article>';
+      }
+      return out;
+    }
+
+    async function load() {
+      var grid = document.getElementById("pgrid");
+      grid.innerHTML = skeletons(state.size);
+      var res = await API.fetchProducts(state);
+      if (res.code !== 0) { grid.innerHTML = ""; UI.toast("商品加载失败", "error"); return; }
+      var list = res.data, total = res.total;
+      document.getElementById("count").innerHTML = "共 <b>" + total + "</b> 件商品";
+      if (!list.length) {
+        document.getElementById("pgrid").innerHTML =
+          '<div class="empty" style="grid-column:1/-1"><div class="empty-glyph">' + icon("search", { size: 24 }) +
+          '</div><b>没有找到匹配的商品</b><span class="tiny">试试更换关键词或选择其他分类</span></div>';
+        document.getElementById("pager").innerHTML = "";
+        return;
+      }
+      grid.innerHTML = list.map(productCard).join("");
+      bindCardActions(grid);
+      renderPager(total);
+      if (firstLoad) { firstLoad = false; }
+      else { window.scrollTo({ top: document.getElementById("catalog").offsetTop - 76, behavior: "smooth" }); }
+    }
+
+    function renderPager(total) {
+      var pages = Math.ceil(total / state.size);
+      if (pages <= 1) { document.getElementById("pager").innerHTML = ""; return; }
+      var html = '<button class="btn sm" ' + (state.page === 1 ? "disabled" : "") + ' data-pg="' + (state.page - 1) + '">' + icon("chevron-left", { size: 15 }) + "上一页</button>";
+      for (var i = 1; i <= pages; i++) html += '<button class="btn sm ' + (i === state.page ? "primary" : "") + '" data-pg="' + i + '">' + i + "</button>";
+      html += '<button class="btn sm" ' + (state.page === pages ? "disabled" : "") + ' data-pg="' + (state.page + 1) + '">下一页' + icon("chevron-right", { size: 15 }) + "</button>";
+      var pager = document.getElementById("pager");
+      pager.innerHTML = html;
+      pager.querySelectorAll("[data-pg]").forEach(function (b) {
+        b.addEventListener("click", function () { state.page = parseInt(b.getAttribute("data-pg"), 10); load(); });
+      });
+    }
+
+    load();
+  </script>
+</body>
+</html>

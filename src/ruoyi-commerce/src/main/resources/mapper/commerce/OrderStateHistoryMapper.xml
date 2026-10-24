@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.OrderStateHistoryMapper">
+
+    <resultMap type="OrderStateHistory" id="OrderStateHistoryResult">
+        <id     property="historyId"    column="history_id"/>
+        <result property="orderId"      column="order_id"/>
+        <result property="fromStatus"   column="from_status"/>
+        <result property="toStatus"     column="to_status"/>
+        <result property="statusType"   column="status_type"/>
+        <result property="reason"       column="reason"/>
+        <result property="operatorType" column="operator_type"/>
+        <result property="operatorId"   column="operator_id"/>
+        <result property="occurredAt"   column="occurred_at"/>
+        <result property="createTime"   column="create_time"/>
+    </resultMap>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="OrderStateHistoryResult">
+        select history_id, order_id, from_status, to_status, status_type, reason, operator_type,
+               operator_id, occurred_at, create_time
+        from order_state_histories
+        where order_id = #{orderId}
+        order by occurred_at, history_id
+    </select>
+
+    <insert id="insertHistory" parameterType="OrderStateHistory" useGeneratedKeys="true" keyProperty="historyId">
+        insert into order_state_histories (order_id, from_status, to_status, status_type, reason,
+            operator_type, operator_id, occurred_at, create_time)
+        values (#{orderId}, #{fromStatus}, #{toStatus}, #{statusType}, #{reason},
+            #{operatorType}, #{operatorId}, #{occurredAt}, sysdate())
+    </insert>
+
+</mapper>

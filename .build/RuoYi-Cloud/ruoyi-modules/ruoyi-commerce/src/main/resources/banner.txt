@@ -1,9 +1,0 @@
-Spring Boot Version: ${spring-boot.version}
-Spring Application Name: ${spring.application.name}
-      _                                    _                      
-     | |                                  (_)                     
-  ___| |__   ___  _ __ ___  _ __ ___   ___ _  ___ ___  _ __ ___  
- / __| '_ \ / _ \| '_ ` _ \| '_ ` _ \ / _ \ |/ __/ _ \| '__/ _ \ 
-| (__| | | | (_) | | | | | | | | | | |  __/ | (_| (_) | | |  __/ 
- \___|_| |_|\___/|_| |_| |_|_| |_| |_|\___|_|\___\___/|_|  \___| 
-        跨境交易闭环  ·  product · order · payment · inventory · fulfillment

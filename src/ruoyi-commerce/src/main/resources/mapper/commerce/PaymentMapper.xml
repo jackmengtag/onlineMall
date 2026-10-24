@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.PaymentMapper">
+
+    <resultMap type="Payment" id="PaymentResult">
+        <id     property="paymentId"         column="payment_id"/>
+        <result property="paymentNo"         column="payment_no"/>
+        <result property="orderId"           column="order_id"/>
+        <result property="provider"          column="provider"/>
+        <result property="providerPaymentId" column="provider_payment_id"/>
+        <result property="method"            column="method"/>
+        <result property="amount"            column="amount"/>
+        <result property="currencyCode"      column="currency_code"/>
+        <result property="paymentStatus"     column="payment_status"/>
+        <result property="idempotencyKey"    column="idempotency_key"/>
+        <result property="paidAt"            column="paid_at"/>
+        <result property="expiredAt"         column="expired_at"/>
+        <result property="orderNo"           column="order_no"/>
+        <result property="createBy"          column="create_by"/>
+        <result property="createTime"        column="create_time"/>
+        <result property="updateBy"          column="update_by"/>
+        <result property="updateTime"        column="update_time"/>
+        <result property="remark"            column="remark"/>
+    </resultMap>
+
+    <sql id="selectPaymentVo">
+        select p.payment_id, p.payment_no, p.order_id, p.provider, p.provider_payment_id, p.method,
+               p.amount, p.currency_code, p.payment_status, p.idempotency_key, p.paid_at, p.expired_at,
+               p.create_by, p.create_time, p.update_by, p.update_time, p.remark, o.order_no
+        from payments p
+        left join orders o on o.order_id = p.order_id
+    </sql>
+
+    <select id="selectPaymentList" parameterType="Payment" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        <where>
+            <if test="paymentNo != null and paymentNo != ''">
+                and p.payment_no like concat('%', #{paymentNo}, '%')
+            </if>
+            <if test="orderNo != null and orderNo != ''">
+                and o.order_no like concat('%', #{orderNo}, '%')
+            </if>
+            <if test="orderId != null">
+                and p.order_id = #{orderId}
+            </if>
+            <if test="provider != null and provider != ''">
+                and p.provider = #{provider}
+            </if>
+            <if test="paymentStatus != null and paymentStatus != ''">
+                and p.payment_status = #{paymentStatus}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and p.create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and p.create_time &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by p.payment_id desc
+    </select>
+
+    <select id="selectPaymentById" parameterType="Long" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where p.payment_id = #{paymentId}
+    </select>
+
+    <select id="selectByNo" parameterType="String" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where p.payment_no = #{paymentNo}
+    </select>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where p.order_id = #{orderId}
+        order by p.payment_id desc
+    </select>
+
+    <select id="selectByIdempotencyKey" parameterType="String" resultMap="PaymentResult">
+        <include refid="selectPaymentVo"/>
+        where p.idempotency_key = #{idempotencyKey} limit 1
+    </select>
+
+    <insert id="insertPayment" parameterType="Payment" useGeneratedKeys="true" keyProperty="paymentId">
+        insert into payments (payment_no, order_id, provider, provider_payment_id, method, amount,
+            currency_code, payment_status, idempotency_key, paid_at, expired_at, create_by, create_time, remark)
+        values (#{paymentNo}, #{orderId}, #{provider}, #{providerPaymentId}, #{method}, #{amount},
+            #{currencyCode}, #{paymentStatus}, #{idempotencyKey}, #{paidAt}, #{expiredAt}, #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updatePayment" parameterType="Payment">
+        update payments
+        <set>
+            <if test="provider != null and provider != ''">provider = #{provider},</if>
+            <if test="providerPaymentId != null">provider_payment_id = #{providerPaymentId},</if>
+            <if test="method != null">method = #{method},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="currencyCode != null and currencyCode != ''">currency_code = #{currencyCode},</if>
+            <if test="paymentStatus != null and paymentStatus != ''">payment_status = #{paymentStatus},</if>
+            <if test="paidAt != null">paid_at = #{paidAt},</if>
+            <if test="expiredAt != null">expired_at = #{expiredAt},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where payment_id = #{paymentId}
+    </update>
+
+    <select id="selectReconciliationRows" resultType="java.util.HashMap">
+        select p.payment_id as paymentId, p.payment_no as paymentNo, p.provider as provider,
+               p.method as method, p.amount as channelAmount, p.currency_code as currencyCode,
+               p.payment_status as paymentStatus, p.paid_at as paidAt,
+               o.order_id as orderId, o.order_no as orderNo, o.total_amount as systemAmount,
+               o.payment_status as orderPaymentStatus, o.order_status as orderStatus, o.shop_id as shopId
+        from payments p
+        left join orders o on o.order_id = p.order_id
+        where date(ifnull(p.paid_at, p.create_time)) = #{statDate}
+        order by p.payment_id desc
+    </select>
+
+</mapper>

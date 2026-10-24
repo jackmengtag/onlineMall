@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.RefundMapper">
+
+    <resultMap type="Refund" id="RefundResult">
+        <id     property="refundId"         column="refund_id"/>
+        <result property="refundNo"         column="refund_no"/>
+        <result property="orderId"          column="order_id"/>
+        <result property="paymentId"        column="payment_id"/>
+        <result property="amount"           column="amount"/>
+        <result property="currencyCode"     column="currency_code"/>
+        <result property="refundStatus"     column="refund_status"/>
+        <result property="reason"           column="reason"/>
+        <result property="providerRefundId" column="provider_refund_id"/>
+        <result property="requestedAt"      column="requested_at"/>
+        <result property="completedAt"      column="completed_at"/>
+        <result property="orderNo"          column="order_no"/>
+        <result property="createBy"         column="create_by"/>
+        <result property="createTime"       column="create_time"/>
+        <result property="updateBy"         column="update_by"/>
+        <result property="updateTime"       column="update_time"/>
+        <result property="remark"           column="remark"/>
+    </resultMap>
+
+    <sql id="selectRefundVo">
+        select r.refund_id, r.refund_no, r.order_id, r.payment_id, r.amount, r.currency_code, r.refund_status,
+               r.reason, r.provider_refund_id, r.requested_at, r.completed_at, r.create_by, r.create_time,
+               r.update_by, r.update_time, r.remark, o.order_no
+        from refunds r
+        left join orders o on o.order_id = r.order_id
+    </sql>
+
+    <select id="selectRefundList" parameterType="Refund" resultMap="RefundResult">
+        <include refid="selectRefundVo"/>
+        <where>
+            <if test="refundNo != null and refundNo != ''">
+                and r.refund_no like concat('%', #{refundNo}, '%')
+            </if>
+            <if test="orderId != null">and r.order_id = #{orderId}</if>
+            <if test="paymentId != null">and r.payment_id = #{paymentId}</if>
+            <if test="refundStatus != null and refundStatus != ''">and r.refund_status = #{refundStatus}</if>
+            <if test="currencyCode != null and currencyCode != ''">and r.currency_code = #{currencyCode}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and r.requested_at &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and r.requested_at &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by r.refund_id desc
+    </select>
+
+    <select id="selectRefundById" parameterType="Long" resultMap="RefundResult">
+        <include refid="selectRefundVo"/>
+        where r.refund_id = #{refundId}
+    </select>
+
+    <select id="selectByOrderId" parameterType="Long" resultMap="RefundResult">
+        <include refid="selectRefundVo"/>
+        where r.order_id = #{orderId}
+        order by r.refund_id desc
+    </select>
+
+    <select id="sumRefundedByOrderId" parameterType="Long" resultType="Long">
+        select ifnull(sum(amount), 0) from refunds
+        where order_id = #{orderId}
+          and refund_status in ('REQUESTED', 'APPROVED', 'PROCESSING', 'SUCCEEDED')
+    </select>
+
+    <select id="sumRefundedAmount" resultType="Long">
+        select ifnull(sum(r.amount), 0)
+        from refunds r
+        inner join orders o on o.order_id = r.order_id
+        where r.refund_status = 'SUCCEEDED'
+          and r.completed_at is not null
+          and date(r.completed_at) &gt; date_sub(curdate(), interval #{days} day)
+        <if test="shopId != null">and o.shop_id = #{shopId}</if>
+    </select>
+
+    <insert id="insertRefund" useGeneratedKeys="true" keyProperty="refundId">
+        insert into refunds (refund_no, order_id, payment_id, amount, currency_code, refund_status, reason,
+                             provider_refund_id, requested_at, completed_at, create_by, create_time, remark)
+        values (#{refundNo}, #{orderId}, #{paymentId,jdbcType=BIGINT}, #{amount}, #{currencyCode}, #{refundStatus},
+                #{reason,jdbcType=VARCHAR}, #{providerRefundId,jdbcType=VARCHAR}, #{requestedAt},
+                #{completedAt,jdbcType=TIMESTAMP}, #{createBy,jdbcType=VARCHAR}, sysdate(), #{remark,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="updateRefund" parameterType="Refund">
+        update refunds
+        <set>
+            <if test="refundStatus != null and refundStatus != ''">refund_status = #{refundStatus},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="providerRefundId != null">provider_refund_id = #{providerRefundId},</if>
+            <if test="paymentId != null">payment_id = #{paymentId},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="currencyCode != null and currencyCode != ''">currency_code = #{currencyCode},</if>
+            <if test="completedAt != null">completed_at = #{completedAt},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where refund_id = #{refundId}
+    </update>
+
+    <select id="selectRefundsByCustomer" parameterType="Long" resultType="java.util.LinkedHashMap">
+        select r.refund_no as refundNo,
+               r.order_id as orderId,
+               o.order_no as orderNo,
+               r.amount as amount,
+               r.currency_code as currencyCode,
+               r.refund_status as refundStatus,
+               r.reason as reason,
+               r.remark as remark,
+               r.requested_at as requestedAt,
+               r.completed_at as completedAt
+        from refunds r
+        inner join orders o on o.order_id = r.order_id
+        where o.customer_id = #{customerId}
+        order by r.refund_id desc
+    </select>
+
+    <update id="updateOrderAfterSaleStatus">
+        update orders set after_sale_status = #{status}, update_time = sysdate()
+        where order_id = #{orderId}
+    </update>
+
+</mapper>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.ShipmentMapper">
+
+    <resultMap type="Shipment" id="ShipmentResult">
+        <id property="shipmentId" column="shipment_id"/>
+        <result property="shipmentNo" column="shipment_no"/>
+        <result property="fulfillmentId" column="fulfillment_id"/>
+        <result property="carrierCode" column="carrier_code"/>
+        <result property="trackingNo" column="tracking_no"/>
+        <result property="shipmentStatus" column="shipment_status"/>
+        <result property="shippedAt" column="shipped_at"/>
+        <result property="deliveredAt" column="delivered_at"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="orderId" column="order_id"/>
+        <result property="shopId" column="shop_id"/>
+    </resultMap>
+
+    <sql id="selectShipmentVo">
+        select sh.shipment_id, sh.shipment_no, sh.fulfillment_id, sh.carrier_code, sh.tracking_no,
+               sh.shipment_status, sh.shipped_at, sh.delivered_at,
+               sh.create_by, sh.create_time, sh.update_by, sh.update_time, sh.remark,
+               fo.order_id, fo.shop_id
+        from shipments sh
+        left join fulfillment_orders fo on fo.fulfillment_id = sh.fulfillment_id
+    </sql>
+
+    <select id="selectList" parameterType="Shipment" resultMap="ShipmentResult">
+        <include refid="selectShipmentVo"/>
+        <where>
+            <if test="shipmentNo != null and shipmentNo != ''">and sh.shipment_no = #{shipmentNo}</if>
+            <if test="trackingNo != null and trackingNo != ''">and sh.tracking_no = #{trackingNo}</if>
+            <if test="shipmentStatus != null and shipmentStatus != ''">and sh.shipment_status = #{shipmentStatus}</if>
+            <if test="fulfillmentId != null">and sh.fulfillment_id = #{fulfillmentId}</if>
+            <if test="shopId != null">and fo.shop_id = #{shopId}</if>
+        </where>
+        order by sh.shipment_id desc
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="ShipmentResult">
+        <include refid="selectShipmentVo"/>
+        where sh.shipment_id = #{shipmentId}
+    </select>
+
+    <select id="selectByFulfillmentId" parameterType="Long" resultMap="ShipmentResult">
+        <include refid="selectShipmentVo"/>
+        where sh.fulfillment_id = #{fulfillmentId}
+        order by sh.shipment_id asc
+    </select>
+
+    <insert id="insertShipment" parameterType="Shipment" useGeneratedKeys="true" keyProperty="shipmentId">
+        insert into shipments (shipment_no, fulfillment_id, carrier_code, tracking_no, shipment_status,
+            shipped_at, create_by, create_time, remark)
+        values (#{shipmentNo}, #{fulfillmentId}, #{carrierCode}, #{trackingNo}, #{shipmentStatus},
+            #{shippedAt}, #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updateStatus">
+        update shipments
+        set shipment_status = #{status},
+            update_by = #{updateBy},
+            update_time = sysdate()
+            <if test='status == "DELIVERED"'>
+            , delivered_at = sysdate()
+            </if>
+        where shipment_id = #{shipmentId}
+    </update>
+
+</mapper>

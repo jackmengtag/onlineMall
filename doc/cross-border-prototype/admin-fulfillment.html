@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>履约与物流 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="fulfillment" data-title="履约与物流" data-crumb="履约 / 履约与物流">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 一单多仓拆分 -->
+      <section class="panel mb-24">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" data-icon="layers"></span>一单多仓拆分</div>
+          <span class="pill">NC-20261011-0356</span>
+        </div>
+        <div class="panel-body" id="splitBody"></div>
+      </section>
+
+      <!-- Tab 切换 -->
+      <div class="toolbar">
+        <div class="seg" id="fulSeg">
+          <button class="active" type="button" data-tab="fo">履约单</button>
+          <button type="button" data-tab="ship">运单与轨迹</button>
+        </div>
+        <span class="tiny muted" id="fulSummary"></span>
+      </div>
+      <!-- 履约单表格 -->
+      <section class="panel mb-24" id="panelFO">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" data-icon="warehouse"></span>履约单</div>
+          <span class="tiny muted" id="foCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>履约单号</th><th>订单号</th><th>仓库</th><th>状态</th>
+              <th>预计发货</th><th class="text-right">明细件数</th><th>操作</th>
+            </tr></thead>
+            <tbody id="foRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 运单表格 -->
+      <section class="panel" id="panelShip" style="display:none">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" data-icon="truck"></span>运单与轨迹</div>
+          <span class="tiny muted" id="shipCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>运单号</th><th>履约单号</th><th>承运商</th><th>物流单号</th>
+              <th>状态</th><th>最新节点</th><th>操作</th>
+            </tr></thead>
+            <tbody id="shipRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 物流轨迹抽屉 -->
+  <div class="drawer-mask" id="trackMask" onclick="closeTrack()"></div>
+  <div class="drawer" id="trackDrawer">
+    <div class="drawer-head" id="trackHead"></div>
+    <div class="drawer-body" id="trackBody"></div>
+    <div class="drawer-foot" id="trackFoot"></div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var FOS = [], SHIPS = [];
+      var WH = {};
+      DB.WAREHOUSES.forEach(function (w) { WH[w.code] = w; });
+      var FLOW = ["CREATED", "ALLOCATED", "PICKING", "PACKED", "SHIPPED"];
+
+      var kpiRow = document.getElementById("kpiRow");
+      var foBody = document.getElementById("foRows");
+      var shipBody = document.getElementById("shipRows");
+
+      document.querySelectorAll(".panel-glyph[data-icon]").forEach(function (el) {
+        el.innerHTML = icon(el.getAttribute("data-icon"), { size: 16 });
+      });
+
+      function whBadge(code) {
+        var w = WH[code];
+        if (!w) return '<span class="wh-badge">' + FMT.esc(code) + "</span>";
+        return '<span class="wh-badge"><i style="background:' + w.color + '"></i>' + FMT.esc(w.name) + "</span>";
+      }
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function emptyHtml(kind) {
+        return '<div class="empty"><div class="empty-glyph">' + icon("truck", { size: 26 }) + "</div>" +
+          "<b>暂无" + kind + "数据</b><span class=\"tiny\">" + kind + "生成后将自动出现在这里</span></div>";
+      }
+      function kpiCard(label, value, glyph, tone, sub) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+      function tlItems(list) {
+        return '<div class="timeline">' + list.map(function (x) {
+          var cls = x.cls || "done";
+          var dot = cls === "current" ? icon("clock", { size: 9 }) : (cls === "done" ? icon("check", { size: 9 }) : "");
+          return '<div class="tl-item"><span class="tl-dot ' + cls + '">' + dot + "</span>" +
+            '<div class="tl-title">' + x.title + "</div>" +
+            '<div class="tl-meta">' + x.meta + "</div>" +
+            (x.note ? '<div class="tl-note">' + x.note + "</div>" : "") +
+          "</div>";
+        }).join("") + "</div>";
+      }
+
+      function buildData() {
+        FOS = []; SHIPS = [];
+        DB.ORDERS.forEach(function (o) {
+          var qty = o.items.reduce(function (a, b) { return a + b.qty; }, 0);
+          o.ful.forEach(function (f) {
+            FOS.push({ foNo: f.no, orderNo: o.no, wh: f.wh, status: f.status, eta: f.eta, qty: qty, note: f.note || "", ref: f });
+          });
+          o.ship.forEach(function (s) {
+            SHIPS.push({ no: s.no, foNo: (o.ful[0] && o.ful[0].no) || "—", orderNo: o.no, carrier: s.carrier, tracking: s.tracking, status: s.status, events: s.events || [] });
+          });
+        });
+      }
+
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var pending = FOS.filter(function (f) { return f.status === "CREATED" || f.status === "ALLOCATED"; }).length;
+        var packed = FOS.filter(function (f) { return f.status === "PICKING" || f.status === "PACKED"; }).length;
+        var transit = SHIPS.filter(function (s) { return s.status === "IN_TRANSIT"; }).length;
+        var delivered = SHIPS.filter(function (s) { return s.status === "DELIVERED"; }).length;
+        var rate = SHIPS.length ? Math.round(delivered / SHIPS.length * 1000) / 10 : 0;
+        kpiRow.innerHTML =
+          kpiCard("待处理履约单", pending, "warehouse", "", "已创建 / 已分配，待仓库接单") +
+          kpiCard("已打包", packed, "box", "accent", "拣货中 + 已打包，待交接承运商") +
+          kpiCard("运输中运单", transit, "truck", "info", "全程轨迹实时回传") +
+          kpiCard("妥投率", rate + "%", "check-circle", "gold", delivered + " / " + SHIPS.length + " 运单已妥投");
+        document.getElementById("fulSummary").textContent = "共 " + FOS.length + " 个履约单 · " + SHIPS.length + " 个运单";
+      }
+
+      function renderSplit() {
+        var o = DB.ORDERS.find(function (x) { return x.no === "NC-20261011-0356"; });
+        if (!o) { document.getElementById("splitBody").innerHTML = emptyHtml("拆分"); return; }
+        var orderTile = '<div class="tile"><div class="tiny muted">订单</div><b class="mono">' + o.no + "</b>" +
+          '<div class="tiny muted mt-8">' + o.items.length + " 个 SKU · " + FMT.money(o.amounts.total, o.currency) + "</div></div>";
+        var whTiles = o.ful.map(function (f) {
+          var w = WH[f.wh] || { name: f.wh, color: "#5F6A63" };
+          return '<div class="tile"><div class="row" style="gap:8px"><i style="width:10px;height:10px;border-radius:3px;background:' + w.color + '"></i><b>' + FMT.esc(w.name) + "</b></div>" +
+            '<div class="row between mt-8"><span class="mono tiny muted">' + f.no + "</span>" + UI.badge(DB.FUL_ORDER_STATUS, f.status) + "</div></div>";
+        }).join("");
+        var reason = (o.ful[1] && o.ful[1].note) ? o.ful[1].note : "德国仓缺货，拆分至中国仓直发";
+        document.getElementById("splitBody").innerHTML =
+          '<div class="row wrap" style="gap:14px;align-items:center">' + orderTile +
+            '<span class="flow-arrow">' + icon("arrow-right", { size: 18 }) + "自动拆分</span>" +
+            '<div class="stack" style="gap:10px;flex:1;min-width:240px">' + whTiles + "</div>" +
+          "</div>" +
+          '<div class="tiny muted mt-16">拆分原因：' + FMT.esc(reason) + "（德国仓库存不足，缺货 SKU 转由国内仓直发，其余本地仓履约）。</div>";
+      }
+
+      function renderFO() {
+        document.getElementById("foCount").textContent = "共 " + FOS.length + " 个履约单";
+        if (!FOS.length) {
+          foBody.innerHTML = '<tr><td colspan="7">' + emptyHtml("履约单") + "</td></tr>";
+          return;
+        }
+        foBody.innerHTML = FOS.map(function (f) {
+          var i = FLOW.indexOf(f.status);
+          var canAdvance = i > -1 && i < FLOW.length - 1;
+          return "<tr>" +
+            '<td class="mono cell-strong">' + f.foNo + "</td>" +
+            '<td class="mono">' + f.orderNo + "</td>" +
+            "<td>" + whBadge(f.wh) + "</td>" +
+            "<td>" + UI.badge(DB.FUL_ORDER_STATUS, f.status) + "</td>" +
+            '<td class="tiny muted nowrap">' + f.eta + "</td>" +
+            '<td class="text-right num">' + f.qty + "</td>" +
+            "<td>" + (canAdvance
+              ? '<button class="btn sm" type="button" onclick="advance(\'' + f.foNo + '\')">' + icon("arrow-right", { size: 14 }) + "推进状态</button>"
+              : '<button class="btn sm disabled" type="button">' + icon("check", { size: 14 }) + "已发货</button>") + "</td>" +
+          "</tr>";
+        }).join("");
+      }
+      function renderShip() {
+        document.getElementById("shipCount").textContent = "共 " + SHIPS.length + " 个运单";
+        if (!SHIPS.length) {
+          shipBody.innerHTML = '<tr><td colspan="7">' + emptyHtml("运单") + "</td></tr>";
+          return;
+        }
+        shipBody.innerHTML = SHIPS.map(function (s) {
+          var last = s.events[s.events.length - 1];
+          return "<tr>" +
+            '<td class="mono cell-strong">' + s.no + "</td>" +
+            '<td class="mono">' + s.foNo + "</td>" +
+            "<td>" + FMT.esc(s.carrier) + "</td>" +
+            '<td><span class="row" style="gap:8px"><span class="mono">' + FMT.esc(s.tracking) + "</span>" +
+              '<button class="btn sm icon" type="button" title="复制物流单号" onclick="copyTracking(\'' + FMT.esc(s.tracking) + '\')">' + icon("copy", { size: 14 }) + "</button></span></td>" +
+            "<td>" + UI.badge(DB.ORDER_STATUS, s.status) + "</td>" +
+            '<td><div class="cell-2line"><span>' + (last ? FMT.esc(last.code) : "—") + "</span><i>" + (last ? FMT.esc(last.loc) : "") + "</i></div></td>" +
+            '<td><button class="btn sm" type="button" onclick="openTrack(\'' + s.no + '\')">查看轨迹</button></td>' +
+          "</tr>";
+        }).join("");
+      }
+
+      (async function () {
+        renderKPISkeleton();
+        foBody.innerHTML = skelRows(6, 7);
+        shipBody.innerHTML = skelRows(4, 7);
+        renderSplit();
+        await API.fetchOrders();
+        buildData();
+        renderKPI();
+        renderFO();
+        renderShip();
+      })();
+
+      /* ---------- 交互 ---------- */
+      window.advance = function (foNo) {
+        var f = FOS.find(function (x) { return x.foNo === foNo; });
+        if (!f) return;
+        var i = FLOW.indexOf(f.status);
+        if (i < 0 || i >= FLOW.length - 1) { UI.toast("该履约单已发货，无法继续推进", "info"); return; }
+        var next = FLOW[i + 1];
+        f.status = next;
+        f.ref.status = next;
+        renderKPI();
+        renderFO();
+        UI.toast("履约单 " + foNo + " 已推进为 " + DB.FUL_ORDER_STATUS[next].label);
+      };
+      window.copyTracking = function (t) {
+        function done() { UI.toast("已复制"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(t).then(done, done);
+        } else { done(); }
+      };
+      window.openTrack = function (no) {
+        var s = SHIPS.find(function (x) { return x.no === no; });
+        if (!s) return;
+        renderTrack(s);
+        document.getElementById("trackMask").classList.add("open");
+        UI.openDrawer("trackDrawer");
+      };
+      window.closeTrack = function () {
+        document.getElementById("trackMask").classList.remove("open");
+        UI.closeDrawer("trackDrawer");
+      };
+      function renderTrack(s) {
+        document.getElementById("trackHead").innerHTML =
+          '<div><div class="row" style="gap:10px"><span class="mono cell-strong" style="font-size:14px">' + s.no + "</span>" + UI.badge(DB.ORDER_STATUS, s.status) + "</div>" +
+            '<div class="tiny muted mt-8">' + FMT.esc(s.carrier) + " · " + FMT.esc(s.tracking) + " · 订单 " + s.orderNo + "</div></div>" +
+          '<button class="icon-btn" type="button" onclick="closeTrack()">' + icon("x", { size: 18 }) + "</button>";
+        var evs = s.events.slice().reverse();
+        document.getElementById("trackBody").innerHTML = evs.length
+          ? tlItems(evs.map(function (e, i) {
+              return { cls: i === 0 ? "current" : "done", title: FMT.esc(e.code), meta: e.at + " · " + FMT.esc(e.loc), note: e.note ? FMT.esc(e.note) : "" };
+            }))
+          : '<div class="tiny muted">暂无轨迹事件</div>';
+        document.getElementById("trackFoot").innerHTML =
+          '<button class="btn ghost" type="button" onclick="closeTrack()">关闭</button>' +
+          '<button class="btn" type="button" onclick="copyTracking(\'' + FMT.esc(s.tracking) + '\')">' + icon("copy", { size: 15 }) + "复制物流单号</button>";
+      }
+
+      /* ---------- Tab 切换 ---------- */
+      var panelFO = document.getElementById("panelFO");
+      var panelShip = document.getElementById("panelShip");
+      UI.qsa("#fulSeg button").forEach(function (b) {
+        b.addEventListener("click", function () {
+          UI.qsa("#fulSeg button").forEach(function (x) { x.classList.toggle("active", x === b); });
+          var tab = b.getAttribute("data-tab");
+          panelFO.style.display = tab === "fo" ? "" : "none";
+          panelShip.style.display = tab === "ship" ? "" : "none";
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

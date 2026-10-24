@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>商品中心 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="products" data-title="商品中心" data-crumb="商品与价格 / 商品中心">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 商品列表 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" id="prodGlyph"></span>商品列表</div>
+          <span class="tiny muted" id="prodCount">加载中…</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar mb-0">
+            <div class="toolbar-left">
+              <label class="search-box" id="qBox">
+                <input type="search" id="qInput" placeholder="搜索名称 / SPU / SKU / 品牌" aria-label="搜索商品">
+              </label>
+              <select class="select" id="catFilter" style="width:auto" aria-label="按类目筛选"></select>
+              <select class="select" id="stFilter" style="width:auto" aria-label="按状态筛选"></select>
+              <select class="select" id="chFilter" style="width:auto" aria-label="按渠道筛选"></select>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn primary" id="newBtn" type="button">新建商品</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>商品</th><th>SPU</th><th>类目</th><th>品牌</th>
+              <th class="text-right">价格 (USD)</th><th class="text-right">多仓库存合计</th>
+              <th>状态</th><th>渠道映射</th><th>操作</th>
+            </tr></thead>
+            <tbody id="prodRows"></tbody>
+          </table>
+        </div>
+
+        <div class="panel-foot" style="justify-content:center">
+          <div class="row" id="pager" style="gap:6px"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 商品详情抽屉 -->
+  <div class="drawer-mask" id="prodMask" onclick="closeProd()"></div>
+  <div class="drawer" id="prodDrawer">
+    <div class="drawer-head" id="prodDrawerHead"></div>
+    <div class="drawer-body" id="prodDrawerBody"></div>
+    <div class="drawer-foot" id="prodDrawerFoot"></div>
+  </div>
+
+  <!-- 新建商品模态 -->
+  <div class="modal-mask" id="newProdMask" onclick="closeNewModal()"></div>
+  <div class="modal" id="newProdModal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div class="h3">新建商品</div>
+      <button class="icon-btn" type="button" id="npClose" onclick="closeNewModal()" title="关闭"></button>
+    </div>
+    <div class="modal-body">
+      <div class="grid cols-2" style="gap:16px">
+        <div class="field" style="grid-column:1/-1">
+          <label for="npName">商品名称 *</label>
+          <input class="input" id="npName" placeholder="例如：NovaSound 头戴式主动降噪耳机">
+        </div>
+        <div class="field">
+          <label for="npSpu">SPU *</label>
+          <input class="input mono" id="npSpu" value="SPU-1004XX">
+        </div>
+        <div class="field">
+          <label for="npCat">类目 *</label>
+          <select class="select" id="npCat"></select>
+        </div>
+        <div class="field">
+          <label for="npBrand">品牌 *</label>
+          <input class="input" id="npBrand" placeholder="例如：NovaSound">
+        </div>
+        <div class="field">
+          <label for="npPrice">价格 USD *</label>
+          <input class="input" id="npPrice" type="number" min="0" step="0.01" placeholder="129.99">
+          <span class="tiny muted">请输入美元元金额（如 129.99），非最小货币单位</span>
+        </div>
+        <div class="field">
+          <label for="npOrigin">原产地 *</label>
+          <select class="select" id="npOrigin"></select>
+        </div>
+        <div class="field">
+          <label for="npHs">HS Code *</label>
+          <input class="input mono" id="npHs" placeholder="8518300000">
+        </div>
+        <div class="field">
+          <label for="npDecl">申报品名 *</label>
+          <input class="input" id="npDecl" placeholder="Wireless Headphones">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" type="button" onclick="closeNewModal()">取消</button>
+      <button class="btn primary" type="button" id="newSubmit">保存</button>
+    </div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var PAGE_SIZE = 6;
+      var state = { q: "", category: "all", status: "all", channel: "all", page: 1 };
+      var ALL = [];
+      var CHAN = {}, WH = {};
+      DB.CHANNELS.forEach(function (c) { CHAN[c.code] = c; });
+      DB.WAREHOUSES.forEach(function (w) { WH[w.code] = w; });
+
+      var ORIGINS = { CN: "中国", US: "美国", DE: "德国", SG: "新加坡", IT: "意大利", JP: "日本", VN: "越南" };
+      var tbody = document.getElementById("prodRows");
+      var pager = document.getElementById("pager");
+      var kpiRow = document.getElementById("kpiRow");
+      var prodCount = document.getElementById("prodCount");
+
+      document.getElementById("prodGlyph").innerHTML = icon("box", { size: 16 });
+      document.querySelector("#qBox").insertAdjacentHTML("afterbegin", icon("search", { size: 16 }));
+      document.getElementById("newBtn").insertAdjacentHTML("afterbegin", icon("plus", { size: 15 }));
+      document.getElementById("npClose").innerHTML = icon("x", { size: 18 });
+
+      function stockTotal(p) {
+        return Object.keys(p.stock || {}).reduce(function (a, k) { return a + (p.stock[k] || 0); }, 0);
+      }
+      function isLowStock(p) {
+        return Object.keys(p.stock || {}).some(function (k) { return (p.stock[k] || 0) < 50; });
+      }
+      function whBadge(code) {
+        var w = WH[code];
+        if (!w) return '<span class="wh-badge">' + FMT.esc(code) + "</span>";
+        return '<span class="wh-badge"><i style="background:' + w.color + '"></i>' + FMT.esc(w.name) + "</span>";
+      }
+      function originLabel(code) { return ORIGINS[code] || code; }
+      function channelBadges(p) {
+        var keys = Object.keys(p.channels || {});
+        if (!keys.length) return '<span class="tiny mute2">未映射</span>';
+        return '<div class="row wrap" style="gap:5px">' + keys.map(function (k) {
+          var st = p.channels[k];
+          var cls = DB.CHANNEL_LISTING_STATUS[st] || "neutral";
+          var nm = CHAN[k] ? CHAN[k].name : k;
+          return '<span class="badge ' + cls + '" title="' + FMT.esc(nm) + '">' + FMT.esc(st) + "</span>";
+        }).join("") + "</div>";
+      }
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function secHead(glyph, title) {
+        return '<div class="row mb-12" style="gap:8px"><span class="panel-glyph">' + icon(glyph, { size: 16 }) + '</span><b class="h4">' + title + "</b></div>";
+      }
+      function kvRows(pairs) {
+        return '<div class="kv-list">' + pairs.map(function (p) {
+          return '<div class="kv"><span>' + p[0] + '</span><b>' + p[1] + "</b></div>";
+        }).join("") + "</div>";
+      }
+      function kpiCard(label, value, glyph, tone, sub) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var total = ALL.length;
+        var onSale = ALL.filter(function (p) { return p.status === "ON_SALE"; }).length;
+        var low = ALL.filter(isLowStock).length;
+        kpiRow.innerHTML =
+          kpiCard("在售商品数", onSale, "check-circle", "", "状态为「在售」的商品") +
+          kpiCard("商品总数", total, "box", "accent", "全部 SPU 数量") +
+          kpiCard("SKU 总数", total, "layers", "info", "当前模型 1 商品 = 1 展示 SKU") +
+          kpiCard("低库存 SKU 数", low, "warehouse", "gold", "任一仓库库存 < 50 的商品");
+      }
+
+      function filtered() {
+        var q = state.q.trim().toLowerCase();
+        return ALL.filter(function (p) {
+          if (state.category !== "all" && p.category !== state.category) return false;
+          if (state.status !== "all" && p.status !== state.status) return false;
+          if (state.channel !== "all" && !(p.channels && p.channels[state.channel])) return false;
+          if (q) {
+            var hay = (p.name + " " + p.spu + " " + p.sku + " " + p.brand).toLowerCase();
+            if (hay.indexOf(q) === -1) return false;
+          }
+          return true;
+        });
+      }
+
+      function rowHtml(p) {
+        return '<tr class="rowlink" onclick="openProd(\'' + p.id + '\')">' +
+          '<td><div class="row" style="gap:10px">' +
+            UI.imgTag(p.images[0], p.name, "", p.name).replace("<img ", '<img style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none" ') +
+            '<div class="cell-2line"><span class="cell-strong">' + FMT.esc(p.name) + "</span><i>" + FMT.esc(p.sku) + "</i></div>" +
+          "</div></td>" +
+          '<td class="mono">' + FMT.esc(p.spu) + "</td>" +
+          "<td>" + FMT.esc(p.categoryLabel) + "</td>" +
+          "<td>" + FMT.esc(p.brand) + "</td>" +
+          '<td class="text-right num">' + FMT.money(p.price.USD, "USD") + "</td>" +
+          '<td class="text-right num">' + stockTotal(p).toLocaleString("en-US") + "</td>" +
+          '<td><label class="switch" onclick="event.stopPropagation()">' +
+            '<input type="checkbox"' + (p.status === "ON_SALE" ? " checked" : "") + ' onchange="toggleStatus(\'' + p.id + '\')">' +
+            "<i></i></label></td>" +
+          "<td>" + channelBadges(p) + "</td>" +
+          '<td><button class="btn sm" type="button" onclick="event.stopPropagation();openProd(\'' + p.id + '\')">编辑</button></td>' +
+        "</tr>";
+      }
+      function emptyHtml() {
+        var on = state.q.trim() || state.category !== "all" || state.status !== "all" || state.channel !== "all";
+        var text = on ? "没有符合当前筛选条件的商品" : "暂无商品数据";
+        var sub = on ? "试试调整类目 / 状态 / 渠道或清空搜索关键词" : "创建商品后将自动出现在这里";
+        return '<div class="empty"><div class="empty-glyph">' + icon("box", { size: 26 }) + "</div>" +
+          "<b>" + text + "</b><span class=\"tiny\">" + sub + "</span></div>";
+      }
+      function renderPager(pages) {
+        var html = "";
+        html += '<button class="btn sm' + (state.page === 1 ? " disabled" : "") + '" type="button" onclick="goPage(' + (state.page - 1) + ')">' + icon("chevron-left", { size: 14 }) + "</button>";
+        for (var i = 1; i <= pages; i++) {
+          html += '<button class="btn sm' + (i === state.page ? " primary" : "") + '" type="button" onclick="goPage(' + i + ')">' + i + "</button>";
+        }
+        html += '<button class="btn sm' + (state.page === pages ? " disabled" : "") + '" type="button" onclick="goPage(' + (state.page + 1) + ')">' + icon("chevron-right", { size: 14 }) + "</button>";
+        pager.innerHTML = html;
+      }
+      function renderTable() {
+        var rows = filtered();
+        var pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+        if (state.page > pages) state.page = pages;
+        var start = (state.page - 1) * PAGE_SIZE;
+        var pageRows = rows.slice(start, start + PAGE_SIZE);
+        prodCount.textContent = "共 " + rows.length + " 个商品 · 第 " + state.page + " / " + pages + " 页";
+        tbody.innerHTML = rows.length
+          ? pageRows.map(rowHtml).join("")
+          : '<tr><td colspan="9">' + emptyHtml() + "</td></tr>";
+        renderPager(pages);
+      }
+
+      /* ---------- 抽屉 ---------- */
+      function extId(code, p) {
+        var seed = parseInt(String(p.spu).replace(/\D/g, ""), 10) || 100231;
+        if (code === "AMAZON") return "AMZ-B0" + String(seed % 100000).padStart(5, "0");
+        if (code === "AMAZON-DE") return "AMZ-B0" + String((seed + 7) % 100000).padStart(5, "0");
+        if (code === "TIKTOK") return "TTSG-" + String(seed % 10000).padStart(4, "0");
+        if (code === "SHOPEE") return "SPE-" + String(seed % 10000).padStart(4, "0");
+        return "NC-" + String(p.spu).replace("SPU-", "");
+      }
+      function renderDrawer(p) {
+        document.getElementById("prodDrawerHead").innerHTML =
+          '<div><div class="row" style="gap:10px"><b class="h4">' + FMT.esc(p.name) + "</b>" + UI.badge(DB.PRODUCT_STATUS, p.status) + "</div>" +
+            '<div class="tiny muted mt-8">' + FMT.esc(p.spu) + " · " + FMT.esc(p.categoryLabel) + " · " + FMT.esc(p.brand) + "</div></div>" +
+          '<button class="icon-btn" type="button" onclick="closeProd()">' + icon("x", { size: 18 }) + "</button>";
+
+        var gallery = '<div class="thumbs">' + p.images.map(function (src, i) {
+          return UI.imgTag(src, p.name + " " + (i + 1), "", p.name);
+        }).join("") + "</div>";
+
+        var specPills =
+          '<div class="mb-8"><div class="tiny muted mb-8">颜色</div><div class="row wrap" style="gap:8px">' +
+            (p.colors.length ? p.colors.map(function (c) { return '<span class="pill">' + FMT.esc(c) + "</span>"; }).join("") : '<span class="tiny mute2">—</span>') +
+          "</div></div>" +
+          '<div><div class="tiny muted mb-8">尺码 / 规格</div><div class="row wrap" style="gap:8px">' +
+            (p.sizes.length ? p.sizes.map(function (s) { return '<span class="pill">' + FMT.esc(s) + "</span>"; }).join("") : '<span class="tiny mute2">—</span>') +
+          "</div></div>";
+
+        function priceCell(cur) {
+          var now = p.price[cur], was = p.was ? p.was[cur] : null;
+          return '<span class="num">' + FMT.money(now, cur) + "</span>" +
+            (was ? ' <s class="tiny mute2">' + FMT.money(was, cur) + "</s>" : "");
+        }
+        var priceHtml = kvRows([
+          ["USD 售价", priceCell("USD")],
+          ["EUR 售价", priceCell("EUR")],
+          ["CNY 售价", priceCell("CNY")]
+        ]);
+
+        var isDanger = /带电/.test((p.tags || []).join("") + " " + (p.badge || ""));
+        var customsHtml = '<div class="tile">' + kvRows([
+          ["原产地", FMT.esc(originLabel(p.origin)) + ' <span class="mono">' + FMT.esc(p.origin) + "</span>"],
+          ["HS Code", '<span class="mono">' + FMT.esc(p.hsCode) + "</span>"],
+          ["申报品名", FMT.esc(p.declaredName)],
+          ["申报价值", '<span class="num">' + FMT.money(Math.round(p.declaredValue * 100), "USD") + "</span>"],
+          ["重量", '<span class="num">' + p.weightG + "</span> g"],
+          ["带电 / 危险品", isDanger ? '<span class="badge danger"><i class="dt"></i>带电 · 需特殊运输</span>' : '<span class="badge success"><i class="dt"></i>普货</span>']
+        ]) + "</div>";
+
+        var invRows = DB.WAREHOUSES.map(function (w) {
+          var on = p.stock[w.code] || 0;
+          var locked = Math.min(on, Math.floor(on * 0.08));
+          var avail = on - locked;
+          return "<tr>" +
+            "<td>" + whBadge(w.code) + "</td>" +
+            '<td class="text-right num">' + on.toLocaleString("en-US") + "</td>" +
+            '<td class="text-right num">' + avail.toLocaleString("en-US") + "</td>" +
+          "</tr>";
+        }).join("");
+        var invHtml = '<div class="table-wrap"><table class="table">' +
+          '<thead><tr><th>仓库</th><th class="text-right">在库</th><th class="text-right">可用</th></tr></thead>' +
+          "<tbody>" + invRows + "</tbody></table></div>";
+
+        var chKeys = Object.keys(p.channels || {});
+        var chRows = chKeys.length ? chKeys.map(function (k, i) {
+          var nm = CHAN[k] ? CHAN[k].name : k;
+          var cls = DB.CHANNEL_LISTING_STATUS[p.channels[k]] || "neutral";
+          var syncAt = "2026-10-12 " + ["08:20", "09:05", "07:48", "10:12", "11:30"][i % 5];
+          return "<tr>" +
+            "<td>" + FMT.esc(nm) + "</td>" +
+            '<td class="mono">' + FMT.esc(extId(k, p)) + "</td>" +
+            '<td><span class="badge ' + cls + '"><i class="dt"></i>' + FMT.esc(p.channels[k]) + "</span></td>" +
+            '<td class="muted tiny nowrap">' + syncAt + "</td>" +
+          "</tr>";
+        }).join("") : '<tr><td colspan="4"><div class="tiny muted">暂无渠道映射</div></td></tr>';
+        var chHtml = '<div class="table-wrap"><table class="table">' +
+          '<thead><tr><th>渠道</th><th>外部商品 ID</th><th>状态</th><th>最近同步</th></tr></thead>' +
+          "<tbody>" + chRows + "</tbody></table></div>";
+
+        document.getElementById("prodDrawerBody").innerHTML =
+          '<div class="mb-24">' + secHead("image", "商品图集") + gallery + "</div>" +
+          '<div class="mb-24">' + secHead("sliders", "SKU 规格") + specPills + "</div>" +
+          '<div class="mb-24">' + secHead("wallet", "价格") + priceHtml + "</div>" +
+          '<div class="mb-24">' + secHead("shield", "跨境申报信息") + customsHtml + "</div>" +
+          '<div class="mb-24">' + secHead("warehouse", "多仓库存明细") + invHtml + "</div>" +
+          '<div>' + secHead("tag", "渠道映射") + chHtml + "</div>";
+
+        document.getElementById("prodDrawerFoot").innerHTML =
+          '<button class="btn ghost" type="button" onclick="closeProd()">关闭</button>' +
+          '<button class="btn primary" type="button" onclick="UI.toast(\'商品信息已保存\')">保存</button>';
+      }
+      window.openProd = function (id) {
+        var p = ALL.find(function (x) { return x.id === id; });
+        if (!p) return;
+        renderDrawer(p);
+        document.getElementById("prodMask").classList.add("open");
+        UI.openDrawer("prodDrawer");
+      };
+      window.closeProd = function () {
+        document.getElementById("prodMask").classList.remove("open");
+        UI.closeDrawer("prodDrawer");
+      };
+      window.toggleStatus = function (id) {
+        var p = ALL.find(function (x) { return x.id === id; });
+        if (!p) return;
+        p.status = p.status === "ON_SALE" ? "OFF_SALE" : "ON_SALE";
+        renderKPI();
+        renderTable();
+        UI.toast(p.status === "ON_SALE" ? "已上架：" + p.name : "已下架：" + p.name);
+      };
+      window.goPage = function (n) {
+        if (n < 1) return;
+        state.page = n;
+        renderTable();
+      };
+
+      /* ---------- 新建商品模态 ---------- */
+      window.openNewModal = function () {
+        document.getElementById("newProdMask").classList.add("open");
+        UI.openModal("newProdModal");
+      };
+      window.closeNewModal = function () {
+        document.getElementById("newProdMask").classList.remove("open");
+        UI.closeModal("newProdModal");
+      };
+
+      /* ---------- 筛选控件 ---------- */
+      function buildSelects() {
+        document.getElementById("catFilter").innerHTML = '<option value="all">全部类目</option>' +
+          DB.CATEGORIES.filter(function (c) { return c.key !== "all"; }).map(function (c) {
+            return '<option value="' + c.key + '">' + FMT.esc(c.label) + "</option>";
+          }).join("");
+        document.getElementById("stFilter").innerHTML =
+          '<option value="all">全部状态</option>' +
+          '<option value="ON_SALE">在售</option>' +
+          '<option value="PAUSED">暂停</option>' +
+          '<option value="OFF_SALE">下架</option>';
+        document.getElementById("chFilter").innerHTML = '<option value="all">全部渠道</option>' +
+          DB.CHANNELS.map(function (c) { return '<option value="' + c.code + '">' + FMT.esc(c.name) + "</option>"; }).join("");
+
+        document.getElementById("npCat").innerHTML = DB.CATEGORIES.filter(function (c) { return c.key !== "all"; })
+          .map(function (c) { return '<option value="' + c.key + '">' + FMT.esc(c.label) + "</option>"; }).join("");
+        document.getElementById("npOrigin").innerHTML = Object.keys(ORIGINS)
+          .map(function (k) { return '<option value="' + k + '">' + ORIGINS[k] + " " + k + "</option>"; }).join("");
+      }
+      function fieldVal(id) { return document.getElementById(id).value.trim(); }
+
+      document.getElementById("qInput").addEventListener("input", function () {
+        state.q = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("catFilter").addEventListener("change", function () {
+        state.category = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("stFilter").addEventListener("change", function () {
+        state.status = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("chFilter").addEventListener("change", function () {
+        state.channel = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("newBtn").addEventListener("click", function () { window.openNewModal(); });
+
+      document.getElementById("newSubmit").addEventListener("click", function () {
+        var btn = this;
+        if (btn.classList.contains("disabled")) return;
+        var required = [
+          ["商品名称", "npName"], ["SPU", "npSpu"], ["类目", "npCat"], ["品牌", "npBrand"],
+          ["价格 USD", "npPrice"], ["原产地", "npOrigin"], ["HS Code", "npHs"], ["申报品名", "npDecl"]
+        ];
+        var missing = required.filter(function (r) { return !fieldVal(r[1]); }).map(function (r) { return r[0]; });
+        if (missing.length) { UI.toast("请填写：" + missing.join("、"), "error"); return; }
+        if (parseFloat(fieldVal("npPrice")) <= 0) { UI.toast("价格 USD 必须大于 0", "error"); return; }
+
+        btn.classList.add("disabled");
+        btn.textContent = "保存中…";
+        setTimeout(function () {
+          btn.classList.remove("disabled");
+          btn.textContent = "保存";
+          ["npName", "npBrand", "npPrice", "npHs", "npDecl"].forEach(function (id) { document.getElementById(id).value = ""; });
+          document.getElementById("npSpu").value = "SPU-1004XX";
+          document.getElementById("npCat").selectedIndex = 0;
+          document.getElementById("npOrigin").selectedIndex = 0;
+          UI.toast("商品已创建，等待上架");
+          window.closeNewModal();
+        }, 700);
+      });
+
+      (async function () {
+        renderKPISkeleton();
+        tbody.innerHTML = skelRows(PAGE_SIZE, 9);
+        buildSelects();
+        var res = await API.fetchProducts({ size: 999 });
+        ALL = res.data;
+        renderKPI();
+        renderTable();
+      })();
+    })();
+  </script>
+</body>
+</html>

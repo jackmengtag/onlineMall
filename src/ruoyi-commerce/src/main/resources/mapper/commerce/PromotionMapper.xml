@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.PromotionMapper">
+
+    <resultMap type="Promotion" id="PromotionResult">
+        <id     property="promotionId"     column="promotion_id"/>
+        <result property="shopId"          column="shop_id"/>
+        <result property="promotionCode"   column="promotion_code"/>
+        <result property="promotionName"   column="promotion_name"/>
+        <result property="promotionType"   column="promotion_type"/>
+        <result property="scopeType"       column="scope_type"/>
+        <result property="scopeValue"      column="scope_value"/>
+        <result property="discountValue"   column="discount_value"/>
+        <result property="thresholdAmount" column="threshold_amount"/>
+        <result property="currencyCode"    column="currency_code"/>
+        <result property="startTime"       column="start_time"/>
+        <result property="endTime"         column="end_time"/>
+        <result property="status"          column="status"/>
+        <result property="createBy"        column="create_by"/>
+        <result property="createTime"      column="create_time"/>
+        <result property="updateBy"        column="update_by"/>
+        <result property="updateTime"      column="update_time"/>
+        <result property="remark"          column="remark"/>
+    </resultMap>
+
+    <sql id="selectPromotionVo">
+        select promotion_id, shop_id, promotion_code, promotion_name, promotion_type, scope_type, scope_value,
+               discount_value, threshold_amount, currency_code, start_time, end_time, status,
+               create_by, create_time, update_by, update_time, remark
+        from promotion
+    </sql>
+
+    <select id="selectPromotionList" parameterType="Promotion" resultMap="PromotionResult">
+        <include refid="selectPromotionVo"/>
+        <where>
+            <if test="shopId != null">and shop_id = #{shopId}</if>
+            <if test="promotionCode != null and promotionCode != ''">
+                and promotion_code like concat('%', #{promotionCode}, '%')
+            </if>
+            <if test="promotionName != null and promotionName != ''">
+                and promotion_name like concat('%', #{promotionName}, '%')
+            </if>
+            <if test="promotionType != null and promotionType != ''">and promotion_type = #{promotionType}</if>
+            <if test="scopeType != null and scopeType != ''">and scope_type = #{scopeType}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by promotion_id desc
+    </select>
+
+    <select id="selectPromotionById" parameterType="Long" resultMap="PromotionResult">
+        <include refid="selectPromotionVo"/>
+        where promotion_id = #{promotionId}
+    </select>
+
+    <insert id="insertPromotion" parameterType="Promotion" useGeneratedKeys="true" keyProperty="promotionId">
+        insert into promotion (shop_id, promotion_code, promotion_name, promotion_type, scope_type, scope_value,
+            discount_value, threshold_amount, currency_code, start_time, end_time, status,
+            create_by, create_time, remark)
+        values (#{shopId}, #{promotionCode}, #{promotionName}, #{promotionType}, #{scopeType}, #{scopeValue},
+            #{discountValue}, #{thresholdAmount}, #{currencyCode}, #{startTime}, #{endTime}, #{status},
+            #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updatePromotion" parameterType="Promotion">
+        update promotion
+        <set>
+            <if test="shopId != null">shop_id = #{shopId},</if>
+            <if test="promotionCode != null and promotionCode != ''">promotion_code = #{promotionCode},</if>
+            <if test="promotionName != null and promotionName != ''">promotion_name = #{promotionName},</if>
+            <if test="promotionType != null and promotionType != ''">promotion_type = #{promotionType},</if>
+            <if test="scopeType != null and scopeType != ''">scope_type = #{scopeType},</if>
+            <if test="scopeValue != null">scope_value = #{scopeValue},</if>
+            <if test="discountValue != null">discount_value = #{discountValue},</if>
+            <if test="thresholdAmount != null">threshold_amount = #{thresholdAmount},</if>
+            <if test="currencyCode != null and currencyCode != ''">currency_code = #{currencyCode},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where promotion_id = #{promotionId}
+    </update>
+
+    <delete id="deletePromotionByIds" parameterType="Long">
+        delete from promotion where promotion_id in
+        <foreach collection="array" item="promotionId" open="(" separator="," close=")">
+            #{promotionId}
+        </foreach>
+    </delete>
+
+</mapper>

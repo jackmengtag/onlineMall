@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>运营工作台 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="dashboard" data-title="运营工作台" data-crumb="总览 / 运营工作台">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 趋势 + 市场 -->
+      <div class="two-col mb-24">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><span class="panel-glyph"></span>近 7 日 GMV 趋势</div>
+            <div class="seg" id="trendSeg">
+              <button class="active" type="button">按日</button>
+              <button type="button">按周</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="row between mb-16">
+              <div><div class="tiny muted">本期 GMV</div><div class="kpi-value">$184,230</div></div>
+              <span class="kpi-delta up">↗ 12.4% 环比上周</span>
+            </div>
+            <div class="chart-bars" id="trendChart"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div class="panel-title"><span class="panel-glyph accent"></span>市场分布</div></div>
+          <div class="panel-body">
+            <div class="row" style="gap:22px">
+              <div class="donut" id="marketDonut"><div class="donut-center"><div><div class="tiny muted">主力市场</div><b>美国 46%</b></div></div></div>
+              <div class="stack" style="flex:1;gap:9px" id="marketLegend"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 渠道 + 待办 -->
+      <div class="two-col mb-24">
+        <section class="panel">
+          <div class="panel-head"><div class="panel-title"><span class="panel-glyph info"></span>渠道销售占比</div><span class="tiny muted">今日</span></div>
+          <div class="panel-body stack" id="channelList" style="gap:15px"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head"><div class="panel-title"><span class="panel-glyph gold"></span>待办事项</div><span class="badge warning">5</span></div>
+          <div class="panel-body panel-body tight"><div class="kv-list" id="todoList"></div></div>
+        </section>
+      </div>
+
+      <!-- 最新订单 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph"></span>最新订单</div>
+          <a class="btn ghost sm" href="admin-orders.html">查看全部</a>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>订单号</th><th>渠道</th><th>国家</th><th class="text-right">金额</th>
+              <th>订单状态</th><th>支付</th><th>履约</th><th>下单时间</th>
+            </tr></thead>
+            <tbody id="orderRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    /* 面板图标 */
+    document.querySelectorAll(".panel-glyph").forEach(function (el, i) {
+      el.innerHTML = icon(["trend-up", "globe", "bar-chart", "bell"][i] || "bar-chart", { size: 16 });
+    });
+
+    (async function () {
+      var res = await API.fetchDashboard();
+      var d = res.data;
+
+      /* KPI */
+      document.getElementById("kpiRow").innerHTML = d.kpis.map(function (k) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + k.label + "</span>" +
+            '<span class="kpi-glyph ' + k.tone + '">' + icon(k.glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + k.value + "</div>" +
+          '<span class="kpi-delta ' + k.dir + '">' + (k.dir === "up" ? "↗" : "↘") + " " + k.delta + " 较昨日</span>" +
+        "</div>";
+      }).join("");
+
+      /* 趋势柱状 */
+      document.getElementById("trendChart").innerHTML = d.trend.map(function (t, i) {
+        return '<div class="chart-col' + (i === d.trend.length - 1 ? " accent" : "") + '">' +
+          '<div class="bar-v" style="--h:' + t.v + '%" title="' + t.d + " · GMV 指数 " + t.v + '"></div>' +
+          '<div class="bar-x">' + t.d + "</div></div>";
+      }).join("");
+
+      /* 市场环形图 */
+      var acc = 0, seg = [];
+      d.markets.forEach(function (m) { seg.push(m.color + " " + acc + "% " + (acc + m.v) + "%"); acc += m.v; });
+      document.getElementById("marketDonut").style.background = "conic-gradient(" + seg.join(",") + ")";
+      document.getElementById("marketLegend").innerHTML = d.markets.map(function (m) {
+        return '<div class="row between"><span class="row" style="gap:8px"><i style="width:10px;height:10px;border-radius:3px;background:' + m.color + '"></i>' + m.name + "</span><b class=\"num\">" + m.v + "%</b></div>";
+      }).join("");
+
+      /* 渠道 */
+      document.getElementById("channelList").innerHTML = d.channels.map(function (c) {
+        return "<div>" +
+          '<div class="row between mb-8"><span><b>' + c.name + '</b> <span class="tiny muted">· ' + c.orders + ' 单</span></span><b class="num">' + c.v + "%</b></div>" +
+          '<div class="bar"><i style="width:' + c.v + '%"></i></div>' +
+        "</div>";
+      }).join("");
+
+      /* 待办 */
+      document.getElementById("todoList").innerHTML = d.todos.map(function (t) {
+        return '<a class="todo-row" href="' + t.to + '">' +
+          '<span class="badge ' + t.lvl + '"><i class="dt"></i>' + (t.lvl === "danger" ? "紧急" : t.lvl === "warning" ? "提醒" : "通知") + "</span>" +
+          "<span>" + t.t + "</span>" + icon("chevron-right", { size: 16 }) + "</a>";
+      }).join("");
+
+      /* 最新订单 */
+      document.getElementById("orderRows").innerHTML = DB.ORDERS.slice(0, 5).map(function (o) {
+        return '<tr class="rowlink" onclick="location.href=\'admin-orders.html\'">' +
+          '<td class="mono">' + o.no + "</td>" +
+          '<td><span class="pill">' + o.channel + "</span></td>" +
+          "<td>" + o.country + "</td>" +
+          '<td class="text-right num">' + FMT.money(o.amounts.total, o.currency) + "</td>" +
+          "<td>" + UI.badge(DB.ORDER_STATUS, o.status) + "</td>" +
+          "<td>" + UI.badge(DB.PAY_STATUS, o.payStatus) + "</td>" +
+          "<td>" + UI.badge(DB.FUL_STATUS, o.fulStatus) + "</td>" +
+          '<td class="muted tiny nowrap">' + o.placedAt + "</td>" +
+        "</tr>";
+      }).join("");
+    })();
+  </script>
+</body>
+</html>

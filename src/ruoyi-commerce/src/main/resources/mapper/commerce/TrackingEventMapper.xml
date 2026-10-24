@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.TrackingEventMapper">
+
+    <resultMap type="TrackingEvent" id="TrackingEventResult">
+        <id property="trackingEventId" column="tracking_event_id"/>
+        <result property="shipmentId" column="shipment_id"/>
+        <result property="eventCode" column="event_code"/>
+        <result property="eventDescription" column="event_description"/>
+        <result property="location" column="location"/>
+        <result property="occurredAt" column="occurred_at"/>
+        <result property="rawPayloadJson" column="raw_payload_json"/>
+        <result property="receivedAt" column="received_at"/>
+    </resultMap>
+
+    <select id="selectByShipmentId" parameterType="Long" resultMap="TrackingEventResult">
+        select * from tracking_events
+        where shipment_id = #{shipmentId}
+        order by occurred_at asc, tracking_event_id asc
+    </select>
+
+    <insert id="insertEvent" parameterType="TrackingEvent" useGeneratedKeys="true" keyProperty="trackingEventId">
+        insert into tracking_events (shipment_id, event_code, event_description, location, occurred_at,
+            raw_payload_json, received_at)
+        values (#{shipmentId}, #{eventCode}, #{eventDescription}, #{location}, #{occurredAt},
+            #{rawPayloadJson}, #{receivedAt})
+    </insert>
+
+</mapper>

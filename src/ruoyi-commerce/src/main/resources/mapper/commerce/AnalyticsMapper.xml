@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.AnalyticsMapper">
+
+    <!-- 店铺工作台汇总 -->
+    <select id="selectShopSummary" resultType="java.util.LinkedHashMap">
+        select
+            (select count(*) from orders o
+                where (#{shopId} is null or o.shop_id = #{shopId})) as orderCount,
+            (select ifnull(sum(o.total_amount), 0) from orders o
+                where (#{shopId} is null or o.shop_id = #{shopId})
+                  and o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDING', 'REFUNDED')) as salesAmount,
+            (select count(*) from orders o
+                where (#{shopId} is null or o.shop_id = #{shopId})
+                  and o.order_status in ('PAID', 'CONFIRMED', 'FULFILLING')
+                  and o.fulfillment_status != 'FULFILLED') as pendingShipmentCount,
+            (select count(*) from refunds r
+                inner join orders o on o.order_id = r.order_id
+                where (#{shopId} is null or o.shop_id = #{shopId})
+                  and r.refund_status in ('REQUESTED', 'APPROVED', 'PROCESSING')) as refundCount,
+            (select ifnull(sum(r.amount), 0) from refunds r
+                inner join orders o on o.order_id = r.order_id
+                where (#{shopId} is null or o.shop_id = #{shopId})
+                  and r.refund_status in ('REQUESTED', 'APPROVED', 'PROCESSING', 'SUCCEEDED')) as refundAmount,
+            (select count(*) from product_spu p
+                where (#{shopId} is null or p.shop_id = #{shopId})) as productCount,
+            (select count(*) from product_spu p
+                where (#{shopId} is null or p.shop_id = #{shopId}) and p.status = 'ON_SALE') as onSaleProductCount
+    </select>
+
+    <!-- 店铺账期汇总（生成结算单） -->
+    <select id="selectShopPeriodSummary" resultType="java.util.LinkedHashMap">
+        select count(*) as orderCount,
+               ifnull(sum(o.total_amount), 0) as grossAmount
+        from orders o
+        where o.shop_id = #{shopId}
+          and ifnull(o.placed_at, o.create_time) &gt;= #{beginTime}
+          and ifnull(o.placed_at, o.create_time) &lt; date_add(#{endTime}, interval 1 day)
+          and o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
+    </select>
+
+    <!-- 店铺近 7 日趋势 -->
+    <select id="selectShopTrend" resultType="java.util.LinkedHashMap">
+        select date_format(ifnull(o.placed_at, o.create_time), '%m-%d') as d,
+               count(*) as orders,
+               ifnull(sum(o.total_amount), 0) as amount
+        from orders o
+        where ifnull(o.placed_at, o.create_time) &gt;= date_sub(curdate(), interval 6 day)
+          and (#{shopId} is null or o.shop_id = #{shopId})
+          and o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDING', 'REFUNDED')
+        group by date_format(ifnull(o.placed_at, o.create_time), '%m-%d')
+        order by min(ifnull(o.placed_at, o.create_time))
+    </select>
+
+    <!-- 店铺客户（本店订单去重） -->
+    <select id="selectShopCustomers" resultType="java.util.LinkedHashMap">
+        select o.customer_id as customerId,
+               c.customer_no as customerNo,
+               c.email as email,
+               c.display_name as displayName,
+               c.country_code as countryCode,
+               count(o.order_id) as orderCount,
+               ifnull(sum(o.total_amount), 0) as totalAmount,
+               max(ifnull(o.placed_at, o.create_time)) as lastOrderTime
+        from orders o
+        inner join customer c on c.customer_id = o.customer_id
+        where (#{shopId} is null or o.shop_id = #{shopId})
+        <if test="keyword != null and keyword != ''">
+            and (c.display_name like concat('%', #{keyword}, '%')
+                 or c.email like concat('%', #{keyword}, '%')
+                 or c.customer_no like concat('%', #{keyword}, '%'))
+        </if>
+        group by o.customer_id, c.customer_no, c.email, c.display_name, c.country_code
+        order by totalAmount desc
+    </select>
+
+    <!-- 平台驾驶舱汇总 -->
+    <select id="selectPlatformSummary" resultType="java.util.LinkedHashMap">
+        select
+            (select ifnull(sum(o.total_amount), 0) from orders o
+                where o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDING', 'REFUNDED')) as gmv,
+            (select count(*) from orders) as orderCount,
+            (select ifnull(sum(o.total_amount), 0) from orders o
+                where date(ifnull(o.placed_at, o.create_time)) = curdate()) as todayGmv,
+            (select count(*) from orders o
+                where date(ifnull(o.placed_at, o.create_time)) = curdate()) as todayOrderCount,
+            (select count(*) from shop) as shopCount,
+            (select count(*) from shop where status = 'ACTIVE') as activeShopCount,
+            (select count(*) from channel_config where status = 'ACTIVE') as channelCount,
+            (select ifnull(sum(r.amount), 0) from refunds r where r.refund_status = 'SUCCEEDED') as refundAmount
+    </select>
+
+    <!-- 平台近 7 日趋势 -->
+    <select id="selectPlatformTrend" resultType="java.util.LinkedHashMap">
+        select date_format(ifnull(o.placed_at, o.create_time), '%m-%d') as d,
+               count(*) as orders,
+               ifnull(sum(o.total_amount), 0) as amount
+        from orders o
+        where ifnull(o.placed_at, o.create_time) &gt;= date_sub(curdate(), interval 6 day)
+          and o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDING', 'REFUNDED')
+        group by date_format(ifnull(o.placed_at, o.create_time), '%m-%d')
+        order by min(ifnull(o.placed_at, o.create_time))
+    </select>
+
+    <!-- 店铺排行 -->
+    <select id="selectShopRanking" resultType="java.util.LinkedHashMap">
+        select s.shop_id as shopId,
+               s.shop_code as shopCode,
+               s.shop_name as shopName,
+               s.status as status,
+               ifnull(sum(case when o.payment_status in ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDING', 'REFUNDED')
+                               then o.total_amount else 0 end), 0) as gmv,
+               count(o.order_id) as orderCount
+        from shop s
+        left join orders o on o.shop_id = s.shop_id
+        group by s.shop_id, s.shop_code, s.shop_name, s.status
+        order by gmv desc
+        limit 10
+    </select>
+
+    <!-- 平台用户与店铺绑定 -->
+    <select id="selectPlatformUsers" resultType="java.util.LinkedHashMap">
+        select u.user_id as userId,
+               u.user_name as userName,
+               u.nick_name as nickName,
+               u.email as email,
+               u.phonenumber as phonenumber,
+               u.status as status,
+               u.create_time as createTime,
+               su.shop_id as shopId,
+               sh.shop_name as shopName,
+               su.shop_role as shopRole,
+               su.status as shopUserStatus
+        from sys_user u
+        left join shop_user su on su.user_id = u.user_id
+        left join shop sh on sh.shop_id = su.shop_id
+        where u.del_flag = '0'
+        <if test="userName != null and userName != ''">
+            and (u.user_name like concat('%', #{userName}, '%')
+                 or u.nick_name like concat('%', #{userName}, '%'))
+        </if>
+        <if test="shopId != null">
+            and su.shop_id = #{shopId}
+        </if>
+        order by u.user_id desc
+    </select>
+
+</mapper>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>售后与退款 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="aftersale" data-title="售后与退款" data-crumb="交易 / 售后与退款">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 售后单列表 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" data-icon="refresh"></span>售后单列表</div>
+          <span class="tiny muted" id="afsCount">加载中…</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar mb-0">
+            <div class="toolbar-left">
+              <div class="row wrap" style="gap:8px" id="chips"></div>
+              <select class="select" id="typeFilter" style="width:auto" aria-label="按售后类型筛选"></select>
+            </div>
+            <div class="toolbar-right">
+              <label class="search-box" id="qBox">
+                <input type="search" id="qInput" placeholder="搜索售后单号 / 订单号 / 客户" aria-label="搜索售后单号、订单号或客户">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>售后单号</th><th>订单号</th><th>客户</th><th>类型</th><th class="text-right">金额</th>
+              <th>币种</th><th>原因</th><th>状态</th><th>申请时间</th><th>渠道</th><th>操作</th>
+            </tr></thead>
+            <tbody id="afsRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 售后处理抽屉 -->
+  <div class="drawer-mask" id="afsMask" onclick="closeAfs()"></div>
+  <div class="drawer" id="afsDrawer">
+    <div class="drawer-head" id="afsHead"></div>
+    <div class="drawer-body" id="afsBody"></div>
+    <div class="drawer-foot" id="afsFoot"></div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var CHAN = {};
+      DB.CHANNELS.forEach(function (c) { CHAN[c.code] = c; });
+
+      var state = { status: "all", type: "all", q: "" };
+      var ALL = [];
+      var CURR = null;         // 当前处理的售后单
+      var CURR_ORDER = null;   // 关联订单
+
+      var STATUS_CHIPS = [
+        { k: "all", label: "全部" },
+        { k: "REQUESTED", label: "待处理" },
+        { k: "PROCESSING", label: "处理中" },
+        { k: "SUCCEEDED", label: "已完成" },
+        { k: "REJECTED", label: "已驳回" }
+      ];
+      var TYPES = ["退货退款", "换货", "仅退款", "拒付"];
+      var REFUNDABLE = ["仅退款", "退货退款"]; // 可编辑退款金额的类型
+
+      var kpiRow = document.getElementById("kpiRow");
+      var tbody = document.getElementById("afsRows");
+      var afsCount = document.getElementById("afsCount");
+
+      document.querySelectorAll(".panel-glyph[data-icon]").forEach(function (el) {
+        el.innerHTML = icon(el.getAttribute("data-icon"), { size: 16 });
+      });
+      document.querySelector("#qBox").insertAdjacentHTML("afterbegin", icon("search", { size: 16 }));
+
+      /* ---------- helpers ---------- */
+      function channelName(code) { return CHAN[code] ? CHAN[code].name : code; }
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function kpiCard(label, value, glyph, tone, sub) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+      function secHead(glyph, title) {
+        return '<div class="row mb-12" style="gap:8px"><span class="panel-glyph">' + icon(glyph, { size: 16 }) + '</span><b class="h4">' + title + "</b></div>";
+      }
+      function kvRows(pairs) {
+        return '<div class="kv-list">' + pairs.map(function (p) {
+          return '<div class="kv"><span>' + p[0] + "</span><b>" + p[1] + "</b></div>";
+        }).join("") + "</div>";
+      }
+      function stepsHtml(flow, terminal) {
+        var html = '<div class="steps">';
+        flow.forEach(function (label, i) {
+          if (i) html += '<span class="step-sep done"></span>';
+          var cls = terminal ? "done" : (i === flow.length - 1 ? "current" : "done");
+          html += '<div class="step ' + cls + '"><b>' + (i + 1) + "</b>" + FMT.esc(label) + "</div>";
+        });
+        return html + "</div>";
+      }
+      function emptyHtml(filtered) {
+        var text = filtered ? "没有符合筛选条件的售后单" : "暂无售后单数据";
+        var sub = filtered ? "试试切换状态 / 类型或清空搜索关键词" : "买家提交售后申请后将自动出现在这里";
+        return '<div class="empty"><div class="empty-glyph">' + icon("refresh", { size: 26 }) + "</div>" +
+          "<b>" + text + "</b><span class=\"tiny\">" + sub + "</span></div>";
+      }
+
+      /* ---------- KPI ---------- */
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var req = ALL.filter(function (r) { return r.status === "REQUESTED"; }).length;
+        var pro = ALL.filter(function (r) { return r.status === "PROCESSING"; }).length;
+        var suc = ALL.filter(function (r) { return r.status === "SUCCEEDED"; }).length;
+        var byCur = {};
+        ALL.forEach(function (r) { byCur[r.currency] = (byCur[r.currency] || 0) + r.amount; });
+        var sumHtml = Object.keys(byCur).map(function (c) { return FMT.money(byCur[c], c); }).join(" / ") || "—";
+        kpiRow.innerHTML =
+          kpiCard("待处理", req, "clock", "gold", "已提交，待客服审核") +
+          kpiCard("处理中", pro, "refresh", "accent", "审核通过，流程进行中") +
+          kpiCard("已完成", suc, "check-circle", "info", "退款已成功到账") +
+          kpiCard("退款金额合计", '<span style="font-size:18px">' + sumHtml + "</span>", "wallet", "", "按币种分组合计");
+      }
+
+      /* ---------- 列表 ---------- */
+      function filtered() {
+        var q = state.q.trim().toLowerCase();
+        return ALL.filter(function (r) {
+          if (state.status !== "all" && r.status !== state.status) return false;
+          if (state.type !== "all" && r.type !== state.type) return false;
+          if (q && (r.no + " " + r.orderNo + " " + r.customer).toLowerCase().indexOf(q) === -1) return false;
+          return true;
+        });
+      }
+      function rowHtml(r) {
+        var amt = r.type === "换货" ? "—" : FMT.money(r.amount, r.currency);
+        return "<tr>" +
+          '<td class="mono cell-strong">' + FMT.esc(r.no) + "</td>" +
+          '<td class="mono">' + FMT.esc(r.orderNo) + "</td>" +
+          '<td class="cell-strong">' + FMT.esc(r.customer) + "</td>" +
+          '<td><span class="pill">' + FMT.esc(r.type) + "</span></td>" +
+          '<td class="text-right num">' + amt + "</td>" +
+          '<td class="mono">' + r.currency + "</td>" +
+          '<td class="muted tiny">' + FMT.esc(r.reason) + "</td>" +
+          "<td>" + UI.badge(DB.AFS_STATUS, r.status) + "</td>" +
+          '<td class="tiny muted nowrap">' + r.at + "</td>" +
+          '<td><span class="pill">' + FMT.esc(channelName(r.channel)) + "</span></td>" +
+          '<td><button class="btn sm" type="button" onclick="openAfs(\'' + r.no + '\')">处理</button></td>' +
+        "</tr>";
+      }
+      function renderTable() {
+        var rows = filtered();
+        var onFilter = state.status !== "all" || state.type !== "all" || state.q.trim();
+        afsCount.textContent = "共 " + ALL.length + " 条 · 当前显示 " + rows.length + " 条";
+        tbody.innerHTML = rows.length
+          ? rows.map(rowHtml).join("")
+          : '<tr><td colspan="11">' + emptyHtml(onFilter) + "</td></tr>";
+      }
+
+      /* ---------- 抽屉 ---------- */
+      function errBadge(msg) {
+        return '<span class="badge danger">' + icon("alert-triangle", { size: 13 }) + msg + "</span>";
+      }
+      window.openAfs = function (no) {
+        var r = ALL.find(function (x) { return x.no === no; });
+        if (!r) return;
+        CURR = r;
+        CURR_ORDER = DB.ORDERS.find(function (o) { return o.no === r.orderNo; }) || null;
+        renderDrawer(r);
+        document.getElementById("afsMask").classList.add("open");
+        UI.openDrawer("afsDrawer");
+      };
+      window.closeAfs = function () {
+        document.getElementById("afsMask").classList.remove("open");
+        UI.closeDrawer("afsDrawer");
+      };
+      window.pickAfs = function (el) {
+        UI.qsa("#afsOpts .opt").forEach(function (b) { b.classList.toggle("on", b === el); });
+      };
+
+      function renderDrawer(r) {
+        document.getElementById("afsHead").innerHTML =
+          '<div><div class="row" style="gap:10px"><span class="mono cell-strong" style="font-size:14px">' + FMT.esc(r.no) + "</span>" + UI.badge(DB.AFS_STATUS, r.status) + "</div>" +
+            '<div class="tiny muted mt-8">' + r.at + " · " + FMT.esc(channelName(r.channel)) + " · 来源订单 " + FMT.esc(r.orderNo) + "</div></div>" +
+          '<button class="icon-btn" type="button" onclick="closeAfs()">' + icon("x", { size: 18 }) + "</button>";
+
+        var terminal = r.status === "SUCCEEDED" || r.status === "REJECTED";
+        var o = CURR_ORDER;
+        var orderSum = o ? kvRows([
+          ["订单号", '<span class="mono">' + FMT.esc(o.no) + "</span>"],
+          ["客户", FMT.esc(o.snapshot.recipient)],
+          ["国家", o.country],
+          ["币种", o.currency],
+          ["订单金额", '<span class="num">' + FMT.money(o.amounts.total, o.currency) + "</span>"]
+        ]) : '<div class="tiny muted">未找到关联订单 ' + FMT.esc(r.orderNo) + "</div>";
+
+        var creds =
+          '<div class="muted mb-8">原因：' + FMT.esc(r.reason) + "</div>" +
+          '<div class="thumbs">' +
+            '<div style="width:44px;height:44px;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--brand-600),var(--brand-900));display:grid;place-items:center;color:#fff">' + icon("image", { size: 18 }) + "</div>" +
+            '<div style="width:44px;height:44px;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--accent-500),var(--accent-700));display:grid;place-items:center;color:#fff">' + icon("image", { size: 18 }) + "</div>" +
+          "</div>" +
+          '<div class="tiny mute2 mt-8">买家上传凭证 2 张</div>';
+
+        var editable = REFUNDABLE.indexOf(r.type) > -1;
+        var amountVal = (r.amount / 100).toFixed(2);
+        var proc =
+          '<div class="opts mb-16" id="afsOpts">' +
+            '<button class="opt on" type="button" data-val="approve" onclick="pickAfs(this)">审核通过</button>' +
+            '<button class="opt" type="button" data-val="reject" onclick="pickAfs(this)">驳回</button>' +
+          "</div>" +
+          '<div class="field mb-16">' +
+            '<label for="afsAmount">退款金额（' + r.currency + "）</label>" +
+            '<input class="input" id="afsAmount" type="number" min="0" step="0.01" value="' + amountVal + '"' + (editable ? "" : " disabled") + ">" +
+            (editable ? "" : '<span class="tiny mute2">该售后类型不涉及退款金额</span>') +
+          "</div>" +
+          '<div class="field">' +
+            '<label for="afsNote">处理备注</label>' +
+            '<textarea class="textarea" id="afsNote" placeholder="填写审核意见 / 退款说明"></textarea>' +
+          "</div>" +
+          '<div class="mt-12" id="afsErr"></div>';
+
+        document.getElementById("afsBody").innerHTML =
+          '<div class="mb-24">' + secHead("refresh", "售后流程") + stepsHtml(r.flow, terminal) + "</div>" +
+          '<div class="mb-24">' + secHead("receipt", "订单摘要") + orderSum + "</div>" +
+          '<div class="mb-24">' + secHead("image", "原因与凭证") + creds + "</div>" +
+          "<div>" + secHead("sliders", "处理") + proc + "</div>";
+
+        document.getElementById("afsFoot").innerHTML =
+          '<button class="btn ghost" type="button" onclick="closeAfs()">关闭</button>' +
+          '<button class="btn primary" type="button" onclick="submitAfs()">提交处理</button>';
+      }
+
+      window.submitAfs = function () {
+        var r = CURR;
+        if (!r) return;
+        var opt = document.querySelector("#afsOpts .opt.on");
+        var action = opt ? opt.getAttribute("data-val") : "approve";
+        var err = document.getElementById("afsErr");
+        err.innerHTML = "";
+        var o = CURR_ORDER;
+
+        if (action === "approve") {
+          if (REFUNDABLE.indexOf(r.type) > -1) {
+            var v = parseFloat(document.getElementById("afsAmount").value);
+            if (isNaN(v) || v < 0) {
+              err.innerHTML = errBadge("请输入有效的退款金额");
+              UI.toast("请输入有效的退款金额", "error");
+              return;
+            }
+            var minor = Math.round(v * 100);
+            if (o && minor > o.amounts.total) {
+              err.innerHTML = errBadge("退款金额不得超过订单实付金额 " + FMT.money(o.amounts.total, o.currency) + "（BR-003）");
+              UI.toast("退款金额不得超过订单实付金额", "error");
+              return;
+            }
+            r.amount = minor;
+          }
+          r.status = r.type === "仅退款" ? "SUCCEEDED" : "PROCESSING";
+          r.flow = r.flow.concat(["客服审核通过"]);
+          if (r.status === "SUCCEEDED") r.flow.push("退款成功");
+        } else {
+          r.status = "REJECTED";
+          r.flow = r.flow.concat(["客服驳回"]);
+        }
+
+        closeAfs();
+        renderKPI();
+        renderTable();
+        UI.toast("售后单已处理");
+      };
+
+      /* ---------- 筛选交互 ---------- */
+      function buildChips() {
+        document.getElementById("chips").innerHTML = STATUS_CHIPS.map(function (c) {
+          return '<button type="button" class="chip' + (c.k === state.status ? " active" : "") + '" data-k="' + c.k + '">' + c.label + "</button>";
+        }).join("");
+        UI.qsa("#chips .chip").forEach(function (b) {
+          b.addEventListener("click", function () {
+            state.status = b.getAttribute("data-k");
+            UI.qsa("#chips .chip").forEach(function (x) { x.classList.toggle("active", x === b); });
+            renderTable();
+          });
+        });
+      }
+      function buildSelects() {
+        document.getElementById("typeFilter").innerHTML = '<option value="all">全部类型</option>' +
+          TYPES.map(function (t) { return '<option value="' + t + '">' + t + "</option>"; }).join("");
+      }
+      document.getElementById("typeFilter").addEventListener("change", function () {
+        state.type = this.value; renderTable();
+      });
+      document.getElementById("qInput").addEventListener("input", function () {
+        state.q = this.value; renderTable();
+      });
+
+      /* ---------- 启动 ---------- */
+      (async function () {
+        renderKPISkeleton();
+        tbody.innerHTML = skelRows(5, 11);
+        buildChips();
+        buildSelects();
+        var res = await API.fetchAftersales();
+        ALL = res.data;
+        renderKPI();
+        renderTable();
+      })();
+    })();
+  </script>
+</body>
+</html>

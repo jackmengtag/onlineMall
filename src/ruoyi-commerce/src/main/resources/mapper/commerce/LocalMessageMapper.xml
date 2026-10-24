@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.LocalMessageMapper">
+
+    <resultMap type="LocalMessage" id="LocalMessageResult">
+        <id property="messageId" column="message_id"/>
+        <result property="messageKey" column="message_key"/>
+        <result property="topic" column="topic"/>
+        <result property="eventType" column="event_type"/>
+        <result property="aggregateType" column="aggregate_type"/>
+        <result property="aggregateId" column="aggregate_id"/>
+        <result property="payloadJson" column="payload_json"/>
+        <result property="messageStatus" column="message_status"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="nextRetryAt" column="next_retry_at"/>
+        <result property="sentAt" column="sent_at"/>
+        <result property="lastError" column="last_error"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertLocalMessage" parameterType="LocalMessage" useGeneratedKeys="true" keyProperty="messageId">
+        insert into local_message (message_key, topic, event_type, aggregate_type, aggregate_id, payload_json,
+            message_status, retry_count, next_retry_at, create_time, update_time)
+        values (#{messageKey}, #{topic}, #{eventType}, #{aggregateType}, #{aggregateId}, #{payloadJson},
+            #{messageStatus}, #{retryCount}, #{nextRetryAt}, sysdate(), sysdate())
+    </insert>
+
+    <select id="selectPendingMessages" resultMap="LocalMessageResult">
+        select * from local_message
+        where message_status in ('PENDING','FAILED')
+          and (next_retry_at is null or next_retry_at &lt;= sysdate())
+        order by message_id limit 200
+    </select>
+
+    <update id="markSent" parameterType="Long">
+        update local_message set message_status='SENT', sent_at=sysdate(), update_time=sysdate(), last_error=null
+        where message_id=#{messageId}
+    </update>
+
+    <update id="markFailed" parameterType="LocalMessage">
+        update local_message set message_status='FAILED', retry_count=ifnull(retry_count,0)+1,
+            next_retry_at=#{nextRetryAt}, last_error=#{lastError}, update_time=sysdate()
+        where message_id=#{messageId}
+    </update>
+
+</mapper>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.commerce.mapper.PlatformConfigMapper">
+
+    <resultMap type="PlatformConfig" id="PlatformConfigResult">
+        <id property="configId" column="config_id"/>
+        <result property="configKey" column="config_key"/>
+        <result property="configValue" column="config_value"/>
+        <result property="configGroup" column="config_group"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectConfigVo">
+        select config_id, config_key, config_value, config_group, create_by, create_time,
+               update_by, update_time, remark
+        from platform_config
+    </sql>
+
+    <select id="selectList" parameterType="PlatformConfig" resultMap="PlatformConfigResult">
+        <include refid="selectConfigVo"/>
+        <where>
+            <if test="configGroup != null and configGroup != ''">and config_group = #{configGroup}</if>
+            <if test="configKey != null and configKey != ''">and config_key like concat('%', #{configKey}, '%')</if>
+        </where>
+        order by config_group, config_id
+    </select>
+
+    <select id="selectByKey" parameterType="String" resultMap="PlatformConfigResult">
+        <include refid="selectConfigVo"/>
+        where config_key = #{configKey} limit 1
+    </select>
+
+    <insert id="insert" parameterType="PlatformConfig" useGeneratedKeys="true" keyProperty="configId">
+        insert into platform_config (config_key, config_value, config_group, create_by, create_time, remark)
+        values (#{configKey}, #{configValue}, #{configGroup}, #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="update" parameterType="PlatformConfig">
+        update platform_config
+        <set>
+            <if test="configKey != null and configKey != ''">config_key = #{configKey},</if>
+            <if test="configValue != null">config_value = #{configValue},</if>
+            <if test="configGroup != null and configGroup != ''">config_group = #{configGroup},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        <where>
+            <choose>
+                <when test="configId != null">config_id = #{configId}</when>
+                <otherwise>config_key = #{configKey}</otherwise>
+            </choose>
+        </where>
+    </update>
+
+</mapper>

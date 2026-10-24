@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>订单管理 · NovaCross 运营中台</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body data-surface="admin" data-page="orders" data-title="订单管理" data-crumb="交易 / 订单管理">
+  <aside class="app-nav" id="app-nav"></aside>
+
+  <div class="app-main">
+    <header class="app-topbar" id="app-topbar"></header>
+
+    <main class="app-content" id="app-content">
+      <!-- KPI -->
+      <div class="grid cols-4 stagger mb-24" id="kpiRow"></div>
+
+      <!-- 订单列表 -->
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><span class="panel-glyph" id="ordersGlyph"></span>订单列表</div>
+          <span class="tiny muted" id="orderCount">加载中…</span>
+        </div>
+
+        <div class="panel-body">
+          <div class="toolbar mb-0">
+            <div class="toolbar-left">
+              <div class="row wrap" style="gap:8px" id="chips"></div>
+              <select class="select" id="chFilter" style="width:auto" aria-label="按渠道筛选"></select>
+              <select class="select" id="coFilter" style="width:auto" aria-label="按国家筛选"></select>
+            </div>
+            <div class="toolbar-right">
+              <label class="search-box" id="qBox">
+                <input type="search" id="qInput" placeholder="搜索订单号 / 客户" aria-label="搜索订单号或客户">
+              </label>
+              <button class="btn" id="exportBtn" type="button">导出</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr>
+              <th>订单号</th><th>渠道</th><th>客户</th><th>国家</th><th>币种</th>
+              <th class="text-right">金额</th><th>订单状态</th><th>支付</th><th>履约</th><th>售后</th>
+              <th>下单时间</th><th>操作</th>
+            </tr></thead>
+            <tbody id="orderRows"></tbody>
+          </table>
+        </div>
+
+        <div class="panel-foot" style="justify-content:center">
+          <div class="row" id="pager" style="gap:6px"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 订单详情抽屉 -->
+  <div class="drawer-mask" id="orderMask" onclick="closeOrder()"></div>
+  <div class="drawer" id="orderDrawer">
+    <div class="drawer-head" id="orderDrawerHead"></div>
+    <div class="drawer-body" id="orderDrawerBody"></div>
+    <div class="drawer-foot" id="orderDrawerFoot"></div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+  <script src="assets/shell.js"></script>
+  <script>
+    (function () {
+      var PAGE_SIZE = 6;
+      var state = { status: "all", channel: "all", country: "all", q: "", page: 1 };
+      var ALL = [];
+      var CUST = {}, CHAN = {}, WH = {};
+      DB.CUSTOMERS.forEach(function (c) { CUST[c.id] = c; });
+      DB.CHANNELS.forEach(function (c) { CHAN[c.code] = c; });
+      DB.WAREHOUSES.forEach(function (w) { WH[w.code] = w; });
+
+      var STATUS_TABS = [
+        { k: "all", label: "全部" },
+        { k: "PENDING_PAYMENT", label: "待支付" },
+        { k: "PAID", label: "已支付" },
+        { k: "FULFILLING", label: "履约中" },
+        { k: "TRANSIT", label: "运输中", match: ["SHIPPED", "IN_TRANSIT"] },
+        { k: "DONE", label: "已完成", match: ["DELIVERED", "COMPLETED"] },
+        { k: "CANCELLED", label: "已取消" }
+      ];
+
+      var tbody = document.getElementById("orderRows");
+      var pager = document.getElementById("pager");
+      var kpiRow = document.getElementById("kpiRow");
+      var orderCount = document.getElementById("orderCount");
+
+      document.getElementById("ordersGlyph").innerHTML = icon("receipt", { size: 16 });
+      document.querySelector("#qBox").insertAdjacentHTML("afterbegin", icon("search", { size: 16 }));
+      document.getElementById("exportBtn").insertAdjacentHTML("afterbegin", icon("download", { size: 16 }));
+
+      function nowStamp() {
+        var d = new Date();
+        function p(n) { return (n < 10 ? "0" : "") + n; }
+        return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+      }
+      function channelName(code) { return CHAN[code] ? CHAN[code].name : code; }
+      function custOf(o) { return CUST[o.customerId] || { name: "—", email: "" }; }
+      function afsBadge(k) {
+        if (!k || k === "NONE") return '<span class="badge neutral"><i class="dt"></i>无售后</span>';
+        return UI.badge(DB.AFS_STATUS, k);
+      }
+      function whBadge(code) {
+        var w = WH[code];
+        if (!w) return '<span class="wh-badge">' + FMT.esc(code) + "</span>";
+        return '<span class="wh-badge"><i style="background:' + w.color + '"></i>' + FMT.esc(w.name) + "</span>";
+      }
+      function skelRows(n, cols) {
+        var cell = '<td><div class="skel" style="height:12px"></div></td>';
+        var row = "<tr>" + new Array(cols + 1).join(cell) + "</tr>";
+        return new Array(n + 1).join(row);
+      }
+      function kpiCard(label, value, glyph, tone, sub) {
+        return '<div class="kpi">' +
+          '<div class="kpi-top"><span class="kpi-label">' + label + "</span>" +
+            '<span class="kpi-glyph ' + tone + '">' + icon(glyph, { size: 18 }) + "</span></div>" +
+          '<div class="kpi-value">' + value + "</div>" +
+          (sub ? '<div class="tiny muted">' + sub + "</div>" : "") +
+        "</div>";
+      }
+
+      function renderKPISkeleton() {
+        kpiRow.innerHTML = [0, 1, 2, 3].map(function () {
+          return '<div class="kpi">' +
+            '<div class="kpi-top"><div class="skel" style="width:46%"></div><div class="skel" style="width:34px;height:34px;border-radius:10px"></div></div>' +
+            '<div class="skel" style="height:26px;width:62%"></div></div>';
+        }).join("");
+      }
+      function renderKPI() {
+        var total = ALL.length;
+        var unpaid = ALL.filter(function (o) { return o.status === "PENDING_PAYMENT"; }).length;
+        var fulfill = ALL.filter(function (o) { return ["PAID", "CONFIRMED", "FULFILLING"].indexOf(o.status) > -1; }).length;
+        var done = ALL.filter(function (o) { return ["DELIVERED", "COMPLETED"].indexOf(o.status) > -1; }).length;
+        function pct(n) { return total ? Math.round(n / total * 1000) / 10 + "%" : "0%"; }
+        kpiRow.innerHTML =
+          kpiCard("总订单数", total, "receipt", "", "覆盖 " + DB.CHANNELS.length + " 个销售渠道") +
+          kpiCard("待支付", unpaid, "clock", "gold", "占全部订单 " + pct(unpaid)) +
+          kpiCard("履约中", fulfill, "truck", "accent", "已支付 / 已确认 / 履约中") +
+          kpiCard("已完成", done, "check-circle", "info", "已妥投 + 已完成");
+      }
+      function matchStatus(o) {
+        if (state.status === "all") return true;
+        var tab = STATUS_TABS.find(function (t) { return t.k === state.status; });
+        if (!tab) return true;
+        if (tab.match) return tab.match.indexOf(o.status) > -1;
+        return o.status === state.status;
+      }
+      function filtered() {
+        var q = state.q.trim().toLowerCase();
+        return ALL.filter(function (o) {
+          if (!matchStatus(o)) return false;
+          if (state.channel !== "all" && o.channel !== state.channel) return false;
+          if (state.country !== "all" && o.country !== state.country) return false;
+          if (q) {
+            var c = custOf(o);
+            var hay = (o.no + " " + c.name + " " + c.email).toLowerCase();
+            if (hay.indexOf(q) === -1) return false;
+          }
+          return true;
+        });
+      }
+
+      function rowHtml(o) {
+        var c = custOf(o);
+        return '<tr class="rowlink" onclick="openOrder(\'' + o.no + '\')">' +
+          '<td class="mono cell-strong">' + o.no + "</td>" +
+          '<td><span class="pill">' + FMT.esc(channelName(o.channel)) + "</span></td>" +
+          '<td><div class="cell-2line"><span class="cell-strong">' + FMT.esc(c.name) + "</span><i>" + FMT.esc(c.email) + "</i></div></td>" +
+          "<td>" + o.country + "</td>" +
+          '<td class="mono">' + o.currency + "</td>" +
+          '<td class="text-right num">' + FMT.money(o.amounts.total, o.currency) + "</td>" +
+          "<td>" + UI.badge(DB.ORDER_STATUS, o.status) + "</td>" +
+          "<td>" + UI.badge(DB.PAY_STATUS, o.payStatus) + "</td>" +
+          "<td>" + UI.badge(DB.FUL_STATUS, o.fulStatus) + "</td>" +
+          "<td>" + afsBadge(o.afsStatus) + "</td>" +
+          '<td class="muted tiny nowrap">' + o.placedAt + "</td>" +
+          '<td><button class="btn sm" type="button" onclick="event.stopPropagation();openOrder(\'' + o.no + '\')">查看</button></td>' +
+        "</tr>";
+      }
+      function emptyHtml() {
+        var on = state.status !== "all" || state.channel !== "all" || state.country !== "all" || state.q.trim();
+        var text = on ? "没有符合当前筛选条件的订单" : "暂无订单数据";
+        var sub = on ? "试试调整状态 / 渠道 / 国家或清空搜索关键词" : "新订单接入后将自动出现在这里";
+        return '<div class="empty"><div class="empty-glyph">' + icon("receipt", { size: 26 }) + "</div>" +
+          "<b>" + text + "</b><span class=\"tiny\">" + sub + "</span></div>";
+      }
+      function renderPager(pages) {
+        var html = "";
+        html += '<button class="btn sm' + (state.page === 1 ? " disabled" : "") + '" type="button" onclick="goPage(' + (state.page - 1) + ')">' + icon("chevron-left", { size: 14 }) + "</button>";
+        for (var i = 1; i <= pages; i++) {
+          html += '<button class="btn sm' + (i === state.page ? " primary" : "") + '" type="button" onclick="goPage(' + i + ')">' + i + "</button>";
+        }
+        html += '<button class="btn sm' + (state.page === pages ? " disabled" : "") + '" type="button" onclick="goPage(' + (state.page + 1) + ')">' + icon("chevron-right", { size: 14 }) + "</button>";
+        pager.innerHTML = html;
+      }
+      function renderTable() {
+        var rows = filtered();
+        var pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+        if (state.page > pages) state.page = pages;
+        var start = (state.page - 1) * PAGE_SIZE;
+        var pageRows = rows.slice(start, start + PAGE_SIZE);
+        orderCount.textContent = "共 " + rows.length + " 单 · 第 " + state.page + " / " + pages + " 页";
+        tbody.innerHTML = rows.length
+          ? pageRows.map(rowHtml).join("")
+          : '<tr><td colspan="12">' + emptyHtml() + "</td></tr>";
+        renderPager(pages);
+      }
+      function secHead(glyph, title) {
+        return '<div class="row mb-12" style="gap:8px"><span class="panel-glyph">' + icon(glyph, { size: 16 }) + '</span><b class="h4">' + title + "</b></div>";
+      }
+      function kvRows(pairs) {
+        return '<div class="kv-list">' + pairs.map(function (p) {
+          return '<div class="kv"><span>' + p[0] + '</span><b>' + p[1] + "</b></div>";
+        }).join("") + "</div>";
+      }
+      function tlItems(list) {
+        return '<div class="timeline">' + list.map(function (x) {
+          var cls = x.cls || "done";
+          var dot = cls === "current" ? icon("clock", { size: 9 }) : (cls === "done" ? icon("check", { size: 9 }) : "");
+          return '<div class="tl-item"><span class="tl-dot ' + cls + '">' + dot + "</span>" +
+            '<div class="tl-title">' + x.title + "</div>" +
+            '<div class="tl-meta">' + x.meta + "</div>" +
+            (x.note ? '<div class="tl-note">' + x.note + "</div>" : "") +
+          "</div>";
+        }).join("") + "</div>";
+      }
+      function itemRow(it, o) {
+        return '<div class="ocard-item">' +
+          UI.imgTag(it.image, it.name, "", it.name) +
+          "<div><div class=\"cell-strong\">" + FMT.esc(it.name) + "</div>" +
+            '<div class="tiny muted">' + FMT.esc(it.sku) + " · " + FMT.esc(it.spec) + "</div></div>" +
+          '<div class="text-right"><div class="num">' + FMT.money(it.unit, o.currency) + "</div>" +
+            '<div class="tiny muted">×' + it.qty + " · " + FMT.money(it.unit * it.qty, o.currency) + "</div></div>" +
+        "</div>";
+      }
+      function shipBlock(s) {
+        var evs = s.events.slice();
+        var lastIdx = evs.length - 1;
+        var tl = tlItems(evs.map(function (e, i) {
+          return { cls: i === lastIdx ? "current" : "done", title: FMT.esc(e.code), meta: e.at + " · " + FMT.esc(e.loc), note: e.note ? FMT.esc(e.note) : "" };
+        }));
+        return '<div class="mb-24">' +
+          kvRows([
+            ["运单号", '<span class="mono">' + s.no + "</span>"],
+            ["承运商", FMT.esc(s.carrier)],
+            ["物流单号", '<span class="mono">' + FMT.esc(s.tracking) + "</span>"],
+            ["状态", UI.badge(DB.ORDER_STATUS, s.status)]
+          ]) +
+          '<div class="mt-12">' + tl + "</div></div>";
+      }
+      function renderDrawer(o) {
+        document.getElementById("orderDrawerHead").innerHTML =
+          '<div><div class="row" style="gap:10px"><span class="mono cell-strong" style="font-size:14px">' + o.no + "</span>" + UI.badge(DB.ORDER_STATUS, o.status) + "</div>" +
+            '<div class="tiny muted mt-8">' + o.placedAt + " · " + FMT.esc(channelName(o.channel)) + " · " + o.country + "</div></div>" +
+          '<button class="icon-btn" type="button" onclick="closeOrder()">' + icon("x", { size: 18 }) + "</button>";
+
+        var items = o.items.map(function (it) { return itemRow(it, o); }).join("");
+
+        var amt = [
+          ["小计", FMT.money(o.amounts.subtotal, o.currency)],
+          ["优惠", o.amounts.discount ? "-" + FMT.money(o.amounts.discount, o.currency) : FMT.money(0, o.currency)],
+          ["运费", FMT.money(o.amounts.shipping, o.currency)],
+          ["税费", FMT.money(o.amounts.tax, o.currency)]
+        ];
+        var amtHtml = '<div class="kv-list">' + amt.map(function (p) {
+          return '<div class="kv"><span>' + p[0] + "</span><b>" + p[1] + "</b></div>";
+        }).join("") +
+          '<div class="kv"><span>合计</span><b class="num" style="font-size:15px;color:var(--accent-600)">' + FMT.money(o.amounts.total, o.currency) + "</b></div></div>";
+
+        var snapHtml = kvRows([
+          ["收件人", FMT.esc(o.snapshot.recipient)],
+          ["联系电话", FMT.esc(o.snapshot.phone)],
+          ["收货地址", FMT.esc(o.snapshot.addr)],
+          ["税费规则版本", '<span class="mono">' + FMT.esc(o.snapshot.taxRule) + "</span>"],
+          ["汇率版本", '<span class="mono">' + FMT.esc(o.snapshot.rateVer) + "</span>"],
+          ["汇率", "1 " + o.currency + " = " + o.snapshot.rate]
+        ]);
+
+        var fulHtml = o.ful.length ? o.ful.map(function (f) {
+          return '<div class="mb-24">' + kvRows([
+            ["履约单号", '<span class="mono">' + f.no + "</span>"],
+            ["发货仓库", whBadge(f.wh)],
+            ["状态", UI.badge(DB.FUL_ORDER_STATUS, f.status)],
+            ["预计发货", f.eta],
+            ["拆分备注", f.note ? FMT.esc(f.note) : "—"]
+          ]) + "</div>";
+        }).join("") : '<div class="tiny muted mb-16">暂无履约单</div>';
+
+        var shipHtml = o.ship.length ? o.ship.map(shipBlock).join("") : '<div class="tiny muted">暂无运单轨迹</div>';
+
+        var his = o.history.map(function (h, i) {
+          return { cls: i === o.history.length - 1 ? "current" : "done", title: FMT.esc(h.t), meta: h.at + " · " + FMT.esc(h.by), note: h.note ? FMT.esc(h.note) : "" };
+        });
+
+        document.getElementById("orderDrawerBody").innerHTML =
+          '<div class="mb-24">' + secHead("box", "商品与价格快照") + '<div class="stack" style="gap:14px">' + items + "</div></div>" +
+          '<div class="mb-24">' + secHead("wallet", "金额明细") + amtHtml + "</div>" +
+          '<div class="mb-24">' + secHead("map-pin", "收货与快照") + snapHtml + "</div>" +
+          '<div class="mb-24">' + secHead("truck", "履约与物流") + fulHtml + shipHtml + "</div>" +
+          '<div>' + secHead("clock", "状态历史") + tlItems(his) + "</div>";
+
+        var foot = '<button class="btn ghost" type="button" onclick="closeOrder()">关闭</button>';
+        if (o.status === "PENDING_PAYMENT") {
+          foot += '<button class="btn primary" type="button" onclick="markPaid(\'' + o.no + '\')">' + icon("credit-card", { size: 15 }) + "标记为已支付</button>";
+        }
+        document.getElementById("orderDrawerFoot").innerHTML = foot;
+      }
+      window.openOrder = function (no) {
+        var o = ALL.find(function (x) { return x.no === no; });
+        if (!o) return;
+        renderDrawer(o);
+        document.getElementById("orderMask").classList.add("open");
+        UI.openDrawer("orderDrawer");
+      };
+      window.closeOrder = function () {
+        document.getElementById("orderMask").classList.remove("open");
+        UI.closeDrawer("orderDrawer");
+      };
+      window.markPaid = function (no) {
+        var o = ALL.find(function (x) { return x.no === no; });
+        if (!o) return;
+        o.status = "PAID";
+        o.payStatus = "PAID";
+        o.paidAt = nowStamp();
+        if (o.pay && o.pay[0]) { o.pay[0].status = "SUCCEEDED"; o.pay[0].at = o.paidAt; }
+        o.history = o.history || [];
+        o.history.push({ t: "支付成功", at: o.paidAt, by: "运营中心", note: "运营端手动标记为已支付（支付单 " + (o.pay && o.pay[0] ? o.pay[0].no : "-") + "）" });
+        renderKPI();
+        renderTable();
+        renderDrawer(o);
+        UI.toast("订单 " + no + " 已标记为已支付");
+      };
+      window.goPage = function (p) {
+        if (p < 1) return;
+        state.page = p;
+        renderTable();
+      };
+
+      function buildChips() {
+        document.getElementById("chips").innerHTML = STATUS_TABS.map(function (t) {
+          return '<button type="button" class="chip' + (t.k === state.status ? " active" : "") + '" data-k="' + t.k + '">' + t.label + "</button>";
+        }).join("");
+        UI.qsa("#chips .chip").forEach(function (b) {
+          b.addEventListener("click", function () {
+            state.status = b.getAttribute("data-k");
+            state.page = 1;
+            UI.qsa("#chips .chip").forEach(function (x) { x.classList.toggle("active", x === b); });
+            renderTable();
+          });
+        });
+      }
+      function buildSelects() {
+        document.getElementById("chFilter").innerHTML = '<option value="all">全部渠道</option>' +
+          DB.CHANNELS.map(function (c) { return '<option value="' + c.code + '">' + FMT.esc(c.name) + "</option>"; }).join("");
+        document.getElementById("coFilter").innerHTML = '<option value="all">全部国家</option>' +
+          ["US", "DE", "SG", "IT"].map(function (c) { return '<option value="' + c + '">' + c + "</option>"; }).join("");
+      }
+
+      document.getElementById("qInput").addEventListener("input", function () {
+        state.q = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("chFilter").addEventListener("change", function () {
+        state.channel = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("coFilter").addEventListener("change", function () {
+        state.country = this.value; state.page = 1; renderTable();
+      });
+      document.getElementById("exportBtn").addEventListener("click", function () {
+        UI.toast("已导出当前筛选结果 (CSV)", "info");
+      });
+
+      (async function () {
+        renderKPISkeleton();
+        tbody.innerHTML = skelRows(PAGE_SIZE, 12);
+        buildChips();
+        buildSelects();
+        var res = await API.fetchOrders();
+        ALL = res.data;
+        renderKPI();
+        renderTable();
+      })();
+    })();
+  </script>
+</body>
+</html>
