@@ -49,7 +49,7 @@ const props = defineProps({
   // 上传接口地址
   action: {
     type: String,
-    default: "/common/upload"
+    default: "/file/upload"
   },
   // 上传携带的参数
   data: {

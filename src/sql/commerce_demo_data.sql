@@ -1,9 +1,9 @@
 -- ============================================================================
--- NovaCross 四端演示数据（MySQL 8 / 库 ry-mall）
+-- NovaCross 四端演示数据（MySQL 8 / 库 ry-cloud）
 -- 依赖：ry_20260417.sql、quartz.sql、commerce_ddl_mysql.sql、commerce_menu_dict_mysql.sql
 -- ============================================================================
 
-USE `ry-mall`;
+USE `ry-cloud`;
 SET NAMES utf8mb4;
 
 DELETE FROM audit_log;

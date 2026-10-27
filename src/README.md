@@ -1,169 +1,129 @@
-<p align="center">
-	<img alt="logo" src="https://oscimg.oschina.net/oscnet/up-d3d0a9303e11d522a06cd263f3079027715.png">
-</p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">RuoYi v3.9.2</h1>
-<h4 align="center">基于SpringBoot+Vue前后端分离的Java快速开发框架</h4>
-<p align="center">
-	<a href="https://gitee.com/y_project/RuoYi-Vue/stargazers"><img src="https://gitee.com/y_project/RuoYi-Vue/badge/star.svg?theme=dark"></a>
-	<a href="https://gitee.com/y_project/RuoYi-Vue"><img src="https://img.shields.io/badge/RuoYi-v3.9.2-brightgreen.svg"></a>
-	<a href="https://gitee.com/y_project/RuoYi-Vue/blob/master/LICENSE"><img src="https://img.shields.io/github/license/mashape/apistatus.svg"></a>
-</p>
+# NovaCross 跨境电商平台（RuoYi-Cloud 微服务版）
 
-# NovaCross 跨境电商平台（四端）
+基于 **RuoYi-Cloud 3.6.8**（Spring Boot 4.0.3 / Spring Cloud 2025.1.0 / Spring Cloud Alibaba 2025.1.0 / JDK 17+）构建的跨境电商平台，覆盖买家商城、运营后台、店铺中心、平台中心四端。
 
-本工程在 RuoYi-Vue 3.9.2 基础上实现 `doc/跨境电商平台需求说明书`、`doc/跨境电商平台架构设计文档` 与 `doc/cross-border-prototype` 原型所描述的业务，包含四个端：
+## 一、服务与端口
 
-| 端 | 入口 | 技术 | 说明 |
-| :--- | :--- | :--- | :--- |
-| 买家商城 | `mall-ui`（默认 8091） | 原型 HTML/CSS/JS + Vite + 真实 API | 首页、商品详情、购物车、结算、支付、订单、账户 |
-| 运营后台 | `ruoyi-ui` 运营中心（默认 8090） | Vue 3 + Element Plus | 工作台、订单、促销、售后、履约、库存、商品、定价、对账 |
-| 店铺中心 | `ruoyi-ui` 店铺中心 | Vue 3 + Element Plus | 店铺工作台、商品、订单、物流、客户、报表、营销、店铺资料、结算 |
-| 平台中心 | `ruoyi-ui` 平台中心 | Vue 3 + Element Plus | 平台驾驶舱、店铺治理、用户权限、风控审计、渠道配置、平台设置 |
+| 服务 | 模块 | 端口 | 说明 |
+| --- | --- | --- | --- |
+| 网关 | `ruoyi-gateway` | 8080 | 统一入口、鉴权、路由、验证码 |
+| 认证中心 | `ruoyi-auth` | 9200 | 登录、登出、注册、令牌刷新 |
+| 系统服务 | `ruoyi-modules/ruoyi-system` | 9201 | 用户、角色、菜单、字典、日志、公告 |
+| 代码生成 | `ruoyi-modules/ruoyi-gen` | 9202 | 代码生成器 |
+| 定时任务 | `ruoyi-modules/ruoyi-job` | 9203 | Quartz 任务调度 |
+| 跨境电商 | `ruoyi-modules/ruoyi-commerce` | 9204 | 商品、订单、库存、定价、支付、履约、结算、买家端 |
+| 文件服务 | `ruoyi-modules/ruoyi-file` | 9300 | 本地 / MinIO 文件存储 |
+| 监控中心 | `ruoyi-visual/ruoyi-monitor` | 9100 | Spring Boot Admin |
+| 注册/配置中心 | Nacos 3.0.2 | 8848 / 9848 / 8081 | 服务发现与配置中心，控制台 8081 |
+| 数据库 | MySQL 8 | 3306 | 业务库 `ry-cloud`，Nacos 配置库 `ry-config` |
+| 缓存 | Redis | 6379 | 登录态、验证码、买家令牌 |
 
-**后端模块**
+## 二、模块结构
 
-- `ruoyi-commerce`：商品/定价/渠道/客户/购物车、订单/支付/退款、库存/履约/物流、税率/汇率/优惠券/促销、店铺/结算/平台配置/审计、买家端公开接口。
-- 一致性设计：订单状态机、状态历史、支付事件幂等、库存条件更新、本地消息表（outbox）。
-- 金额统一 `Long` 最小货币单位，JSON 字段存 JSON 文本。
-
-**演示账号**
-
-| 端 | 账号 | 密码 |
-| :--- | :--- | :--- |
-| 运营/平台后台 | admin | admin123 |
-| 店铺中心 | shopadmin | admin123 |
-| 买家商城 | alice@example.com | admin123 |
-
-**本地启动**
-
-```bash
-# 1. 初始化数据库（MySQL 8，库名 ry-mall）
-mysql -uroot -p < sql/commerce_ddl_mysql.sql
-mysql -uroot -p ry-mall < sql/ry_20260417.sql
-mysql -uroot -p ry-mall < sql/quartz.sql
-mysql -uroot -p ry-mall < sql/commerce_menu_dict_mysql.sql
-mysql -uroot -p ry-mall < sql/commerce_demo_data.sql
-
-# 2. 启动 Redis（示例：redis-server --requirepass 123456），必要时调整 application-druid.yml
-
-# 3. 后端
-mvn -DskipTests package
-java -jar ruoyi-admin/target/ruoyi-admin.jar
-
-# 4. 管理端
-cd ruoyi-ui && npm install && npm run dev -- --port 8090
-
-# 5. 买家端
-cd mall-ui && npm install && npm run dev     # http://localhost:8091
+```
+src
+├── ruoyi-gateway          网关（路由 / 鉴权 / 验证码）
+├── ruoyi-auth             认证服务
+├── ruoyi-api
+│   └── ruoyi-api-system   系统服务 Feign 接口与 LoginUser 模型
+├── ruoyi-common           通用模块（core / redis / security / log / datasource / swagger ...）
+├── ruoyi-modules
+│   ├── ruoyi-system       系统管理服务
+│   ├── ruoyi-gen          代码生成服务
+│   ├── ruoyi-job          定时任务服务
+│   ├── ruoyi-file         文件服务
+│   └── ruoyi-commerce     跨境电商业务服务
+├── ruoyi-visual           监控服务
+├── ruoyi-ui               管理后台（Vue 3 + Element Plus + Vite）
+├── mall-ui                买家商城（原生 HTML/CSS/JS）
+├── sql                    初始化脚本（系统库、Nacos 配置库、跨境电商库）
+└── tests                  测试资产
 ```
 
-**实现说明**
+## 三、网关路由
 
-- 文档基线为 PostgreSQL 15+；本项目按若依默认技术栈落地 MySQL 8，类型映射与服务层价格防重叠校验见 `sql/commerce_ddl_mysql.sql` 头部。
-- 支付、渠道平台、承运商、消息队列使用可联调的本地实现，接口边界保留，便于替换真实适配器。
-- 买家端 `assets/mock.js` 仅作为接口异常时的演示兜底，正常流程全部读取后端数据。
+| 路径 | 目标服务 |
+| --- | --- |
+| `/auth/**` | `ruoyi-auth` |
+| `/code/**` | `ruoyi-gen` |
+| `/schedule/**` | `ruoyi-job` |
+| `/system/**` | `ruoyi-system` |
+| `/file/**` | `ruoyi-file` |
+| `/commerce/**`、`/api/**` | `ruoyi-commerce` |
 
-## 平台简介
+`/api/**` 为买家端接口，使用买家自有令牌（`X-Customer-Token`），已加入网关白名单，不再校验若依 JWT。
 
-若依是一套全部开源的快速开发平台，毫无保留给个人及企业免费使用。
+## 四、数据库初始化
 
-* 前端采用Vue、Element（提供 Vue2/Vue3/TS 多版本）。
-* 后端采用Spring Boot、Spring Security、Redis & Jwt。
-* 基于Jwt的Token认证，支持多终端（Web、App、小程序）无缝接入。
-* 支持加载动态权限菜单，多方式轻松权限控制，细粒度到按钮级别。
-* 内置强大代码生成器，一键生成前后端代码（java、vue、xml、sql），支持 CRUD 下载。
-* 阿里云折扣场：[点我进入](http://aly.ruoyi.vip)，腾讯云秒杀场：[点我进入](http://txy.ruoyi.vip)&nbsp;&nbsp;
+```bash
+# 1. 业务库（系统表 + 跨境电商表 + 演示数据）
+mysql -uroot -p123456 -e "CREATE DATABASE IF NOT EXISTS \`ry-cloud\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+mysql -uroot -p123456 ry-cloud < sql/ry_20260321.sql
+mysql -uroot -p123456 ry-cloud < sql/commerce_ddl_mysql.sql
+mysql -uroot -p123456 ry-cloud < sql/commerce_demo_data.sql
+mysql -uroot -p123456 ry-cloud < sql/commerce_menu_dict_mysql.sql
 
-# 版本分支
+# 2. Nacos 配置库（内置 application-dev.yml、ruoyi-gateway-dev.yml、ruoyi-commerce-dev.yml 等）
+mysql -uroot -p123456 < sql/ry_config_20260311.sql
+```
 
-RuoYi-Vue 后端项目提供 Spring Boot 2.x / 3.x / 4.x 多版本分支的并行维护
+Nacos 使用 MySQL 作为配置存储时，需在 `conf/application.properties` 配置：
 
-| 名称              | 说明                      | 地址                                                    |
-| :---------------- | :------------------------ | :------------------------------------------------------ |
-| master 默认分支   | Spring Boot 4.x (JDK 17+) | https://gitee.com/y_project/RuoYi-Vue                   |
-| springboot3 分支  | Spring Boot 3.x (JDK 17+) | https://gitee.com/y_project/RuoYi-Vue/tree/springboot3  |
-| springboot2 分支  | Spring Boot 2.x (JDK 8+)  | https://gitee.com/y_project/RuoYi-Vue/tree/springboot2  |  
+```properties
+spring.sql.init.platform=mysql
+db.num=1
+db.url.0=jdbc:mysql://127.0.0.1:3306/ry-config?characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+db.user.0=root
+db.password.0=123456
+nacos.core.auth.server.identity.key=ruoyi
+nacos.core.auth.server.identity.value=ruoyi
+nacos.core.auth.plugin.nacos.token.secret.key=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg=
+nacos.console.port=8081
+```
 
-RuoYi-Vue 前端项目提供 Vue 2.x / 3.x / JavaScript / TypeScript 版本，均可混用搭配
+## 五、启动顺序
 
-| 项目名称      | **RuoYi-Vue2** | **RuoYi-Vue3** | **RuoYi-Vue3-TypeScript**   |
-| :---          | :---           | :---           | :---                        |
-| **前端框架**  | Vue 2         | Vue 3          | Vue 3                       |
-| **脚本语言**  | JavaScript    | JavaScript     | TypeScript                  |
-| **构建工具**  | Vue CLI       | Vite           | Vite                        |
-| **UI 组件库** | Element UI    | Element Plus   | Element Plus                |
-| **状态管理**  | Vuex          | Pinia          | Pinia                       |
-| **路由管理**  | Vue Router 3  | Vue Router 4   | Vue Router 4                |
-| **核心特点**  | 1. 技术栈经典稳定<br>2. 社区资料丰富<br>3. 当前维护重心已转移 | 1. 现代前端技术栈<br>2. 开发体验与性能更优<br>3. 官方主推的活跃版本 | 1. 类型加持，减少沟通成本<br>2. 开发时有提示，效率更高<br>3. 多人协作企业级开发项目 |
-| **仓库地址**  | [RuoYi-Vue2](https://gitcode.com/yangzongzhuan/RuoYi-Vue2) | [RuoYi-Vue3](https://gitcode.com/yangzongzhuan/RuoYi-Vue3) | [RuoYi-Vue3-TypeScript](https://gitcode.com/yangzongzhuan/RuoYi-Vue3/tree/typescript) |
+```bash
+# 1. 中间件
+#    MySQL、Redis 按本机环境启动
+#    Nacos：bin/startup.cmd -m standalone（JDK 17+）
 
-## 内置功能
+# 2. 后端（每个模块独立进程）
+java -jar ruoyi-modules/ruoyi-system/target/ruoyi-modules-system.jar
+java -jar ruoyi-modules/ruoyi-commerce/target/ruoyi-modules-commerce.jar
+java -jar ruoyi-auth/target/ruoyi-auth.jar
+java -jar ruoyi-gateway/target/ruoyi-gateway.jar
 
-1.  用户管理：用户是系统操作者，该功能主要完成系统用户配置。
-2.  部门管理：配置系统组织机构（公司、部门、小组），树结构展现支持数据权限。
-3.  岗位管理：配置系统用户所属担任职务。
-4.  菜单管理：配置系统菜单，操作权限，按钮权限标识等。
-5.  角色管理：角色菜单权限分配、设置角色按机构进行数据范围权限划分。
-6.  字典管理：对系统中经常使用的一些较为固定的数据进行维护。
-7.  参数管理：对系统动态配置常用参数。
-8.  通知公告：系统通知公告信息发布维护。
-9.  操作日志：系统正常操作日志记录和查询；系统异常信息日志记录和查询。
-10. 登录日志：系统登录日志记录查询包含登录异常。
-11. 在线用户：当前系统中活跃用户状态监控。
-12. 定时任务：在线（添加、修改、删除)任务调度包含执行结果日志。
-13. 代码生成：前后端代码的生成（java、html、xml、sql）支持CRUD下载 。
-14. 系统接口：根据业务代码自动生成相关的api接口文档。
-15. 服务监控：监视当前系统CPU、内存、磁盘、堆栈等相关信息。
-16. 缓存监控：对系统的缓存信息查询，命令统计等。
-17. 在线构建器：拖动表单元素生成相应的HTML代码。
-18. 连接池监视：监视当前系统数据库连接池状态，可进行分析SQL找出系统性能瓶颈。
+# 3. 前端
+cd ruoyi-ui && npm install && npm run dev     # http://localhost:8090
+cd mall-ui  && npm install && npm run dev     # http://localhost:8091
+```
 
-## 在线体验
+前端开发代理均指向网关 `http://localhost:8080`。
 
-- admin/admin123  
-- 陆陆续续收到一些打赏，为了更好的体验已用于演示服务器升级。谢谢各位小伙伴。
+## 六、账号
 
-演示地址：http://vue.ruoyi.vip  
-文档地址：http://doc.ruoyi.vip
+| 端 | 账号 | 密码 |
+| --- | --- | --- |
+| 管理后台（超级管理员） | admin | admin123 |
+| 店铺中心（店铺管理员） | shopadmin | admin123 |
 
-## 演示图
+## 七、从单体版迁移的说明
 
-<table>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/cd1f90be5f2684f4560c9519c0f2a232ee8.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/1cbcf0e6f257c7d3a063c0e3f2ff989e4b3.jpg"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-8074972883b5ba0622e13246738ebba237a.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-9f88719cdfca9af2e58b352a20e23d43b12.png"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-39bf2584ec3a529b0d5a3b70d15c9b37646.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-936ec82d1f4872e1bc980927654b6007307.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-b2d62ceb95d2dd9b3fbe157bb70d26001e9.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-d67451d308b7a79ad6819723396f7c3d77a.png"/></td>
-    </tr>	 
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/5e8c387724954459291aafd5eb52b456f53.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/644e78da53c2e92a95dfda4f76e6d117c4b.jpg"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-8370a0d02977eebf6dbf854c8450293c937.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-49003ed83f60f633e7153609a53a2b644f7.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-d4fe726319ece268d4746602c39cffc0621.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-c195234bbcd30be6927f037a6755e6ab69c.png"/></td>
-    </tr>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/b6115bc8c31de52951982e509930b20684a.jpg"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-5e4daac0bb59612c5038448acbcef235e3a.png"/></td>
-    </tr>
-</table>
+1. 原 `ruoyi-admin`、`ruoyi-framework`、`ruoyi-system`、`ruoyi-quartz`、`ruoyi-generator`、`ruoyi-common` 已替换为 RuoYi-Cloud 官方模块。
+2. `ruoyi-commerce` 迁移为独立微服务 `ruoyi-modules-commerce`，包名仍为 `com.ruoyi.commerce`。
+3. 权限注解由 `@PreAuthorize("@ss.hasPermi('x')")` 统一改为 `@RequiresPermissions("x")`。
+4. 登录用户模型由 `LoginUser.getUser()` 调整为 `LoginUser.getSysUser()`。
+5. 买家端 `@Anonymous` 改为网关白名单 `/api/**`。
+6. 管理后台保留 Vue 3 版本（`ruoyi-ui`），以兼容已有跨境电商页面；登录、登出、验证码、路由接口已切换到 `/auth/**`、`/code`、`/system/user/getInfo`、`/system/menu/getRouters`。
+7. 后端统一由网关 `8080` 访问，前端不再直连业务服务。
 
+## 八、构建
 
-## 若依前后端分离交流群
+```bash
+# 全量打包（跳过测试）
+mvn -DskipTests package
 
-QQ群： [![加入QQ群](https://img.shields.io/badge/已满-937441-blue.svg)](https://jq.qq.com/?_wv=1027&k=5bVB1og) [![加入QQ群](https://img.shields.io/badge/已满-887144332-blue.svg)](https://jq.qq.com/?_wv=1027&k=5eiA4DH) [![加入QQ群](https://img.shields.io/badge/已满-180251782-blue.svg)](https://jq.qq.com/?_wv=1027&k=5AxMKlC) [![加入QQ群](https://img.shields.io/badge/已满-104180207-blue.svg)](https://jq.qq.com/?_wv=1027&k=51G72yr) [![加入QQ群](https://img.shields.io/badge/已满-186866453-blue.svg)](https://jq.qq.com/?_wv=1027&k=VvjN2nvu) [![加入QQ群](https://img.shields.io/badge/已满-201396349-blue.svg)](https://jq.qq.com/?_wv=1027&k=5vYAqA05) [![加入QQ群](https://img.shields.io/badge/已满-101456076-blue.svg)](https://jq.qq.com/?_wv=1027&k=kOIINEb5) [![加入QQ群](https://img.shields.io/badge/已满-101539465-blue.svg)](https://jq.qq.com/?_wv=1027&k=UKtX5jhs) [![加入QQ群](https://img.shields.io/badge/已满-264312783-blue.svg)](https://jq.qq.com/?_wv=1027&k=EI9an8lJ) [![加入QQ群](https://img.shields.io/badge/已满-167385320-blue.svg)](https://jq.qq.com/?_wv=1027&k=SWCtLnMz) [![加入QQ群](https://img.shields.io/badge/已满-104748341-blue.svg)](https://jq.qq.com/?_wv=1027&k=96Dkdq0k) [![加入QQ群](https://img.shields.io/badge/已满-160110482-blue.svg)](https://jq.qq.com/?_wv=1027&k=0fsNiYZt) [![加入QQ群](https://img.shields.io/badge/已满-170801498-blue.svg)](https://jq.qq.com/?_wv=1027&k=7xw4xUG1) [![加入QQ群](https://img.shields.io/badge/已满-108482800-blue.svg)](https://jq.qq.com/?_wv=1027&k=eCx8eyoJ) [![加入QQ群](https://img.shields.io/badge/已满-101046199-blue.svg)](https://jq.qq.com/?_wv=1027&k=SpyH2875) [![加入QQ群](https://img.shields.io/badge/已满-136919097-blue.svg)](https://jq.qq.com/?_wv=1027&k=tKEt51dz) [![加入QQ群](https://img.shields.io/badge/已满-143961921-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=0vBbSb0ztbBgVtn3kJS-Q4HUNYwip89G&authKey=8irq5PhutrZmWIvsUsklBxhj57l%2F1nOZqjzigkXZVoZE451GG4JHPOqW7AW6cf0T&noverify=0&group_code=143961921) [![加入QQ群](https://img.shields.io/badge/已满-174951577-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=ZFAPAbp09S2ltvwrJzp7wGlbopsc0rwi&authKey=HB2cxpxP2yspk%2Bo3WKTBfktRCccVkU26cgi5B16u0KcAYrVu7sBaE7XSEqmMdFQp&noverify=0&group_code=174951577) [![加入QQ群](https://img.shields.io/badge/已满-161281055-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Fn2aF5IHpwsy8j6VlalNJK6qbwFLFHat&authKey=uyIT%2B97x2AXj3odyXpsSpVaPMC%2Bidw0LxG5MAtEqlrcBcWJUA%2FeS43rsF1Tg7IRJ&noverify=0&group_code=161281055) [![加入QQ群](https://img.shields.io/badge/已满-138988063-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=XIzkm_mV2xTsUtFxo63bmicYoDBA6Ifm&authKey=dDW%2F4qsmw3x9govoZY9w%2FoWAoC4wbHqGal%2BbqLzoS6VBarU8EBptIgPKN%2FviyC8j&noverify=0&group_code=138988063) [![加入QQ群](https://img.shields.io/badge/已满-151450850-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=DkugnCg68PevlycJSKSwjhFqfIgrWWwR&authKey=pR1Pa5lPIeGF%2FFtIk6d%2FGB5qFi0EdvyErtpQXULzo03zbhopBHLWcuqdpwY241R%2F&noverify=0&group_code=151450850) [![加入QQ群](https://img.shields.io/badge/已满-224622315-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=F58bgRa-Dp-rsQJThiJqIYv8t4-lWfXh&authKey=UmUs4CVG5OPA1whvsa4uSespOvyd8%2FAr9olEGaWAfdLmfKQk%2FVBp2YU3u2xXXt76&noverify=0&group_code=224622315) [![加入QQ群](https://img.shields.io/badge/已满-287842588-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Nxb2EQ5qozWa218Wbs7zgBnjLSNk_tVT&authKey=obBKXj6SBKgrFTJZx0AqQnIYbNOvBB2kmgwWvGhzxR67RoRr84%2Bus5OadzMcdJl5&noverify=0&group_code=287842588) [![加入QQ群](https://img.shields.io/badge/已满-187944233-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=numtK1M_I4eVd2Gvg8qtbuL8JgX42qNh&authKey=giV9XWMaFZTY%2FqPlmWbkB9g3fi0Ev5CwEtT9Tgei0oUlFFCQLDp4ozWRiVIzubIm&noverify=0&group_code=187944233) [![加入QQ群](https://img.shields.io/badge/已满-228578329-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=G6r5KGCaa3pqdbUSXNIgYloyb8e0_L0D&authKey=4w8tF1eGW7%2FedWn%2FHAypQksdrML%2BDHolQSx7094Agm7Luakj9EbfPnSTxSi2T1LQ&noverify=0&group_code=228578329) [![加入QQ群](https://img.shields.io/badge/已满-191164766-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=GsOo-OLz53J8y_9TPoO6XXSGNRTgbFxA&authKey=R7Uy%2Feq%2BZsoKNqHvRKhiXpypW7DAogoWapOawUGHokJSBIBIre2%2FoiAZeZBSLuBc&noverify=0&group_code=191164766) [![加入QQ群](https://img.shields.io/badge/已满-174569686-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=PmYavuzsOthVqfdAPbo4uAeIbu7Ttjgc&authKey=p52l8%2FXa4PS1JcEmS3VccKSwOPJUZ1ZfQ69MEKzbrooNUljRtlKjvsXf04bxNp3G&noverify=0&group_code=174569686) [![加入QQ群](https://img.shields.io/badge/已满-127358632-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=M9y5NjAl44lAL_Vh2crmEehZU_PMU6KS&authKey=ZSDz8hEREWSaPuxQV3gEwqGIaGjfRNnkB4rJjf0IvXhrSUGSGwQFmBA%2Boe8HFxyl&noverify=0&group_code=127358632) [![加入QQ群](https://img.shields.io/badge/113071109-blue.svg)](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=UGnoqRcFRxUaX-JAUNrSDbPimKrllp4x&authKey=Bbzf8Bc0XaQhq5c4QOg46Uqngd%2FvtIixrLvCM1EkPf41diqKXKZqXVwAxHTxJ8R1&noverify=0&group_code=113071109) 点击按钮入群。
+# 仅构建跨境电商服务
+mvn -pl ruoyi-modules/ruoyi-commerce -am -DskipTests package
+```

@@ -4,7 +4,7 @@
 -- 买家商城为独立前端，不占用若依菜单。
 -- ============================================================================
 
-USE `ry-mall`;
+USE `ry-cloud`;
 
 delete from sys_menu where menu_id between 3000 and 3299;
 

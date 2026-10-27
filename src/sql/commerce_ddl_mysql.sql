@@ -4,14 +4,14 @@
 --
 -- 端：买家商城 / 运营后台 / 店铺中心 / 平台中心
 -- 说明：
---   1. 文档基线为 PostgreSQL 15+，本项目落地若依默认 MySQL 8（库 ry-mall）。
+--   1. 文档基线为 PostgreSQL 15+，本项目落地若依默认 MySQL 8（库 ry-cloud）。
 --   2. 金额统一 BIGINT 最小货币单位；json 字段存 JSON 文本。
 --   3. 价格有效期排他约束由 SkuPriceService 服务层校验。
 --   4. 审计字段沿用若依 BaseEntity：create_by/create_time/update_by/update_time/remark。
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS `ry-mall` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `ry-mall`;
+CREATE DATABASE IF NOT EXISTS `ry-cloud` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `ry-cloud`;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 

@@ -1,0 +1,4639 @@
+{
+  "runAt": "2026-10-24T15:02:44.484Z",
+  "finishedAt": "2026-10-24T15:03:23.541Z",
+  "baseUrl": "http://127.0.0.1:8080",
+  "suffix": "1792854164482",
+  "fatalError": null,
+  "summary": {
+    "total": 165,
+    "passed": 165,
+    "failed": 0,
+    "skipped": 0
+  },
+  "groups": [
+    {
+      "name": "A 认证与权限",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "B 运营-商品",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "C 运营-价格",
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "D 运营-渠道",
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "E 运营-客户与地址",
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "F 运营-购物车",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "G 运营-促销/优惠券/税率/汇率",
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "H 运营-订单全链路",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "I 运营-库存/履约/物流/看板/对账",
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "J 店铺端",
+      "total": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "K 平台端",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "L 买家端",
+      "total": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "M 边界与业务规则",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "keyOrders": {
+    "mainOrderId": 90,
+    "mainOrderNo": "NC-20261024230257784710751",
+    "illegalCompleteOrderId": 91,
+    "cancelledOrderId": 92,
+    "cancelledOrderNo": "NC-20261024230303172409486",
+    "shopCancelledOrderId": 93,
+    "storefrontUsdOrderNo": "NC-20261024230311597736303",
+    "idempotentCallbackOrderId": 98,
+    "externalOrderId": 99
+  },
+  "results": [
+    {
+      "id": "AUTH-001",
+      "group": "A 认证与权限",
+      "name": "admin 登录成功",
+      "method": "POST",
+      "path": "/login",
+      "status": "PASS",
+      "durationMs": 1495,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/login",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 1491
+        }
+      ]
+    },
+    {
+      "id": "AUTH-002",
+      "group": "A 认证与权限",
+      "name": "admin 错误密码登录失败",
+      "method": "POST",
+      "path": "/login",
+      "status": "PASS",
+      "durationMs": 1295,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/login",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "用户不存在/密码错误",
+          "error": null,
+          "durationMs": 1293
+        }
+      ]
+    },
+    {
+      "id": "AUTH-003",
+      "group": "A 认证与权限",
+      "name": "无 token 访问商品列表返回 401",
+      "method": "GET",
+      "path": "/commerce/admin/product/list",
+      "status": "PASS",
+      "durationMs": 17,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 401,
+          "msg": "请求访问：/commerce/admin/product/list，认证失败，无法访问系统资源",
+          "error": null,
+          "durationMs": 17
+        }
+      ]
+    },
+    {
+      "id": "AUTH-004",
+      "group": "A 认证与权限",
+      "name": "shopadmin 访问平台店铺列表返回 403",
+      "method": "GET",
+      "path": "/commerce/platform/shop/list",
+      "status": "PASS",
+      "durationMs": 1951,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/login",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 1921
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/list",
+          "httpStatus": 200,
+          "code": 403,
+          "msg": "没有权限，请联系管理员授权",
+          "error": null,
+          "durationMs": 29
+        }
+      ]
+    },
+    {
+      "id": "AUTH-005",
+      "group": "A 认证与权限",
+      "name": "shopadmin 访问运营商品列表返回 403",
+      "method": "GET",
+      "path": "/commerce/admin/product/list",
+      "status": "PASS",
+      "durationMs": 36,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 403,
+          "msg": "没有权限，请联系管理员授权",
+          "error": null,
+          "durationMs": 35
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-001",
+      "group": "B 运营-商品",
+      "name": "商品列表",
+      "method": "GET",
+      "path": "/commerce/admin/product/list",
+      "status": "PASS",
+      "durationMs": 92,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/list?pageNum=1&pageSize=5",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 90
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-002",
+      "group": "B 运营-商品",
+      "name": "SKU 下拉选项",
+      "method": "GET",
+      "path": "/commerce/admin/product/skuOptions",
+      "status": "PASS",
+      "durationMs": 89,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/skuOptions?spuId=1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 87
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-003",
+      "group": "B 运营-商品",
+      "name": "商品详情（种子 SPU 1）",
+      "method": "GET",
+      "path": "/commerce/admin/product/{spuId}",
+      "status": "PASS",
+      "durationMs": 70,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 69
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-004",
+      "group": "B 运营-商品",
+      "name": "新增 SPU + SKU",
+      "method": "POST",
+      "path": "/commerce/admin/product",
+      "status": "PASS",
+      "durationMs": 1003,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 139
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/list?spuCode=SPU-API-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 751
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/list?spuId=22&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 111
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-005",
+      "group": "B 运营-商品",
+      "name": "更新商品",
+      "method": "PUT",
+      "path": "/commerce/admin/product",
+      "status": "PASS",
+      "durationMs": 100,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/product",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 62
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/22",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-006",
+      "group": "B 运营-商品",
+      "name": "商品状态 DRAFT→PUBLISHED→ON_SALE→OFF_SALE",
+      "method": "POST",
+      "path": "/commerce/admin/product/status",
+      "status": "PASS",
+      "durationMs": 317,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/status?spuId=22&status=PUBLISHED",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 62
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/status?spuId=22&status=ON_SALE",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 57
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/status?spuId=22&status=OFF_SALE",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 42
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/status?spuId=22&status=ON_SALE",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 58
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/status?spuId=22&status=OFF_SALE",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 41
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/22",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 56
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-007",
+      "group": "B 运营-商品",
+      "name": "SKU 列表",
+      "method": "GET",
+      "path": "/commerce/admin/product/sku/list",
+      "status": "PASS",
+      "durationMs": 55,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/list?spuId=22&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 53
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-008",
+      "group": "B 运营-商品",
+      "name": "SKU 详情",
+      "method": "GET",
+      "path": "/commerce/admin/product/sku/{skuId}",
+      "status": "PASS",
+      "durationMs": 59,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/22",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-009",
+      "group": "B 运营-商品",
+      "name": "更新 SKU",
+      "method": "PUT",
+      "path": "/commerce/admin/product/sku",
+      "status": "PASS",
+      "durationMs": 88,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 50
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/22",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-010",
+      "group": "B 运营-商品",
+      "name": "SKU 可售性查询",
+      "method": "GET",
+      "path": "/commerce/admin/product/availability",
+      "status": "PASS",
+      "durationMs": 81,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/availability?skuId=1&countryCode=US&channelCode=DIRECT&currencyCode=USD",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 80
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRODUCT-011",
+      "group": "B 运营-商品",
+      "name": "删除商品（先删 SKU 再删 SPU）",
+      "method": "DELETE",
+      "path": "/commerce/admin/product/{spuIds}",
+      "status": "PASS",
+      "durationMs": 451,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/product",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 101
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/list?spuCode=SPU-DEL-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 122
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/list?spuId=23&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 67
+        },
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 46
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/sku/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 30
+        },
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 51
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/product/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 30
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-001",
+      "group": "C 运营-价格",
+      "name": "价格列表",
+      "method": "GET",
+      "path": "/commerce/admin/price/list",
+      "status": "PASS",
+      "durationMs": 72,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/list?skuId=1&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 71
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-002",
+      "group": "C 运营-价格",
+      "name": "价格解析（skuId=1, US, DIRECT, USD）",
+      "method": "GET",
+      "path": "/commerce/admin/price/resolve",
+      "status": "PASS",
+      "durationMs": 35,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/resolve?skuId=1&countryCode=US&channelCode=DIRECT&currencyCode=USD",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 34
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-003",
+      "group": "C 运营-价格",
+      "name": "新增价格",
+      "method": "POST",
+      "path": "/commerce/admin/price",
+      "status": "PASS",
+      "durationMs": 129,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 63
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/list?skuId=22&countryCode=JP&channelCode=DIRECT&currencyCode=JPY&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 65
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-004",
+      "group": "C 运营-价格",
+      "name": "更新价格",
+      "method": "PUT",
+      "path": "/commerce/admin/price",
+      "status": "PASS",
+      "durationMs": 140,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 111
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/29",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 28
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-005",
+      "group": "C 运营-价格",
+      "name": "非法区间与区间重叠被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/price",
+      "status": "PASS",
+      "durationMs": 141,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "销售价不能高于划线价",
+          "error": null,
+          "durationMs": 39
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "失效时间必须晚于生效时间",
+          "error": null,
+          "durationMs": 57
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "同一维度下价格有效期存在重叠，请调整生效区间",
+          "error": null,
+          "durationMs": 42
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-006",
+      "group": "C 运营-价格",
+      "name": "价格详情",
+      "method": "GET",
+      "path": "/commerce/admin/price/{priceId}",
+      "status": "PASS",
+      "durationMs": 25,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/29",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 25
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PRICE-007",
+      "group": "C 运营-价格",
+      "name": "删除价格",
+      "method": "DELETE",
+      "path": "/commerce/admin/price/{priceIds}",
+      "status": "PASS",
+      "durationMs": 146,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/29",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 116
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/price/29",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 30
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-001",
+      "group": "D 运营-渠道",
+      "name": "渠道商品列表",
+      "method": "GET",
+      "path": "/commerce/admin/channel/list",
+      "status": "PASS",
+      "durationMs": 61,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 60
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-002",
+      "group": "D 运营-渠道",
+      "name": "新增渠道商品映射",
+      "method": "POST",
+      "path": "/commerce/admin/channel",
+      "status": "PASS",
+      "durationMs": 127,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 71
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/list?externalProductId=EXT-P-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 54
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-003",
+      "group": "D 运营-渠道",
+      "name": "更新渠道商品映射",
+      "method": "PUT",
+      "path": "/commerce/admin/channel",
+      "status": "PASS",
+      "durationMs": 85,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 47
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-004",
+      "group": "D 运营-渠道",
+      "name": "同步渠道商品（LIVE）",
+      "method": "POST",
+      "path": "/commerce/admin/channel/sync/{listingId}",
+      "status": "PASS",
+      "durationMs": 82,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/sync/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 54
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 27
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-005",
+      "group": "D 运营-渠道",
+      "name": "渠道商品详情",
+      "method": "GET",
+      "path": "/commerce/admin/channel/{listingId}",
+      "status": "PASS",
+      "durationMs": 27,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 26
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CHANNEL-006",
+      "group": "D 运营-渠道",
+      "name": "删除渠道商品映射",
+      "method": "DELETE",
+      "path": "/commerce/admin/channel/{listingIds}",
+      "status": "PASS",
+      "durationMs": 104,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 44
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 60
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-001",
+      "group": "E 运营-客户与地址",
+      "name": "客户列表",
+      "method": "GET",
+      "path": "/commerce/admin/customer/list",
+      "status": "PASS",
+      "durationMs": 131,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 130
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-002",
+      "group": "E 运营-客户与地址",
+      "name": "新增客户",
+      "method": "POST",
+      "path": "/commerce/admin/customer",
+      "status": "PASS",
+      "durationMs": 1064,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 747
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/list?email=api-1792854164482%40example.com&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 313
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-003",
+      "group": "E 运营-客户与地址",
+      "name": "重复邮箱创建被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/customer",
+      "status": "PASS",
+      "durationMs": 49,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "邮箱'api-1792854164482@example.com'已被注册",
+          "error": null,
+          "durationMs": 49
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-004",
+      "group": "E 运营-客户与地址",
+      "name": "更新客户",
+      "method": "PUT",
+      "path": "/commerce/admin/customer",
+      "status": "PASS",
+      "durationMs": 93,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 64
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 28
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-005",
+      "group": "E 运营-客户与地址",
+      "name": "新增客户收货地址",
+      "method": "POST",
+      "path": "/commerce/admin/customer/address",
+      "status": "PASS",
+      "durationMs": 108,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 51
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address/list?customerId=11&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 56
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-006",
+      "group": "E 运营-客户与地址",
+      "name": "客户地址列表",
+      "method": "GET",
+      "path": "/commerce/admin/customer/address/list",
+      "status": "PASS",
+      "durationMs": 61,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address/list?customerId=11&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-007",
+      "group": "E 运营-客户与地址",
+      "name": "更新客户地址",
+      "method": "PUT",
+      "path": "/commerce/admin/customer/address",
+      "status": "PASS",
+      "durationMs": 111,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 69
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 40
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-008",
+      "group": "E 运营-客户与地址",
+      "name": "删除客户地址",
+      "method": "DELETE",
+      "path": "/commerce/admin/customer/address/{addressIds}",
+      "status": "PASS",
+      "durationMs": 79,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address/23",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 36
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/address/list?customerId=11&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 43
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CUSTOMER-009",
+      "group": "E 运营-客户与地址",
+      "name": "删除客户",
+      "method": "DELETE",
+      "path": "/commerce/admin/customer/{customerIds}",
+      "status": "PASS",
+      "durationMs": 66,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 42
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/customer/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 23
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CART-001",
+      "group": "F 运营-购物车",
+      "name": "查询客户购物车",
+      "method": "GET",
+      "path": "/commerce/admin/cart/{customerId}",
+      "status": "PASS",
+      "durationMs": 53,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 53
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CART-002",
+      "group": "F 运营-购物车",
+      "name": "运营添加购物车明细",
+      "method": "POST",
+      "path": "/commerce/admin/cart/item",
+      "status": "PASS",
+      "durationMs": 108,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/item?customerId=1&skuId=1&quantity=1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 108
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CART-003",
+      "group": "F 运营-购物车",
+      "name": "运营修改购物车数量",
+      "method": "PUT",
+      "path": "/commerce/admin/cart/item",
+      "status": "PASS",
+      "durationMs": 157,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/item",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 62
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 93
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CART-004",
+      "group": "F 运营-购物车",
+      "name": "运营删除购物车明细",
+      "method": "DELETE",
+      "path": "/commerce/admin/cart/item/{cartItemId}",
+      "status": "PASS",
+      "durationMs": 95,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/item/33",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 32
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 63
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-CART-005",
+      "group": "F 运营-购物车",
+      "name": "运营清空购物车",
+      "method": "DELETE",
+      "path": "/commerce/admin/cart/{customerId}",
+      "status": "PASS",
+      "durationMs": 363,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/item?customerId=1&skuId=1&quantity=1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 179
+        },
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 89
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/cart/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 94
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PROMOTION-001",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "促销列表",
+      "method": "GET",
+      "path": "/commerce/admin/promotion/list",
+      "status": "PASS",
+      "durationMs": 79,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 79
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PROMOTION-002",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "新增促销",
+      "method": "POST",
+      "path": "/commerce/admin/promotion",
+      "status": "PASS",
+      "durationMs": 121,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 61
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion/list?promotionCode=PROMO-API-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PROMOTION-003",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "更新促销",
+      "method": "PUT",
+      "path": "/commerce/admin/promotion",
+      "status": "PASS",
+      "durationMs": 88,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 40
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion/19",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 48
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-PROMOTION-004",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "删除促销",
+      "method": "DELETE",
+      "path": "/commerce/admin/promotion/{promotionIds}",
+      "status": "PASS",
+      "durationMs": 76,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion/19",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 43
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/promotion/19",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 33
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-COUPON-001",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "优惠券列表",
+      "method": "GET",
+      "path": "/commerce/admin/coupon/list",
+      "status": "PASS",
+      "durationMs": 64,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 64
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-COUPON-002",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "新增优惠券",
+      "method": "POST",
+      "path": "/commerce/admin/coupon",
+      "status": "PASS",
+      "durationMs": 146,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 86
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon/list?couponCode=CPN-API-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-COUPON-003",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "更新优惠券",
+      "method": "PUT",
+      "path": "/commerce/admin/coupon",
+      "status": "PASS",
+      "durationMs": 171,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 111
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 58
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-COUPON-004",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "删除优惠券",
+      "method": "DELETE",
+      "path": "/commerce/admin/coupon/{couponIds}",
+      "status": "PASS",
+      "durationMs": 112,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 63
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-TAX-001",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "税率列表",
+      "method": "GET",
+      "path": "/commerce/admin/tax/list",
+      "status": "PASS",
+      "durationMs": 94,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 92
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-TAX-002",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "新增税率",
+      "method": "POST",
+      "path": "/commerce/admin/tax",
+      "status": "PASS",
+      "durationMs": 146,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 82
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax/list?version=TAX-ZZ-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 61
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-TAX-003",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "更新税率",
+      "method": "PUT",
+      "path": "/commerce/admin/tax",
+      "status": "PASS",
+      "durationMs": 91,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 45
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax/12",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 46
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-TAX-004",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "删除税率",
+      "method": "DELETE",
+      "path": "/commerce/admin/tax/{ruleIds}",
+      "status": "PASS",
+      "durationMs": 74,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax/12",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 36
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/tax/12",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-EXCHANGE-001",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "汇率列表",
+      "method": "GET",
+      "path": "/commerce/admin/exchange/list",
+      "status": "PASS",
+      "durationMs": 107,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 107
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-EXCHANGE-002",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "新增汇率",
+      "method": "POST",
+      "path": "/commerce/admin/exchange",
+      "status": "PASS",
+      "durationMs": 163,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 99
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange/list?version=FX-ZZZ-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 63
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-EXCHANGE-003",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "更新汇率",
+      "method": "PUT",
+      "path": "/commerce/admin/exchange",
+      "status": "PASS",
+      "durationMs": 90,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 40
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-EXCHANGE-004",
+      "group": "G 运营-促销/优惠券/税率/汇率",
+      "name": "删除汇率",
+      "method": "DELETE",
+      "path": "/commerce/admin/exchange/{rateIds}",
+      "status": "PASS",
+      "durationMs": 89,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 58
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/exchange/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 30
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-001",
+      "group": "H 运营-订单全链路",
+      "name": "创建订单并校验金额构成",
+      "method": "POST",
+      "path": "/commerce/admin/order",
+      "status": "PASS",
+      "durationMs": 878,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 757
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 118
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-002",
+      "group": "H 运营-订单全链路",
+      "name": "订单详情（明细/快照/历史）",
+      "method": "GET",
+      "path": "/commerce/admin/order/{orderId}",
+      "status": "PASS",
+      "durationMs": 105,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 104
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-003",
+      "group": "H 运营-订单全链路",
+      "name": "订单状态历史",
+      "method": "GET",
+      "path": "/commerce/admin/order/history/{orderId}",
+      "status": "PASS",
+      "durationMs": 35,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/history/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 34
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-004",
+      "group": "H 运营-订单全链路",
+      "name": "订单列表可查到新订单",
+      "method": "GET",
+      "path": "/commerce/admin/order/list",
+      "status": "PASS",
+      "durationMs": 111,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/list?orderNo=NC-20261024230257784710751&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 110
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-005",
+      "group": "H 运营-订单全链路",
+      "name": "创建支付单",
+      "method": "POST",
+      "path": "/commerce/admin/payment",
+      "status": "PASS",
+      "durationMs": 83,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment?orderId=90&provider=MOCK&method=CARD",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 77
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-006",
+      "group": "H 运营-订单全链路",
+      "name": "模拟支付成功并校验订单 PAID",
+      "method": "POST",
+      "path": "/commerce/admin/payment/mock/{paymentId}",
+      "status": "PASS",
+      "durationMs": 321,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment/mock/83",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 218
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 102
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-007",
+      "group": "H 运营-订单全链路",
+      "name": "支付事件非空",
+      "method": "GET",
+      "path": "/commerce/admin/payment/events/{paymentId}",
+      "status": "PASS",
+      "durationMs": 49,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment/events/83",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 48
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-008",
+      "group": "H 运营-订单全链路",
+      "name": "订单拆分履约单",
+      "method": "POST",
+      "path": "/commerce/admin/fulfillment/split/{orderId}",
+      "status": "PASS",
+      "durationMs": 246,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/split/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 200
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/list?orderId=90&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 46
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-009",
+      "group": "H 运营-订单全链路",
+      "name": "履约状态 ALLOCATED→PICKING→PACKED",
+      "method": "POST",
+      "path": "/commerce/admin/fulfillment/status",
+      "status": "PASS",
+      "durationMs": 175,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/status?fulfillmentId=10&toStatus=ALLOCATED",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 50
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/status?fulfillmentId=10&toStatus=PICKING",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/status?fulfillmentId=10&toStatus=PACKED",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 37
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 48
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-010",
+      "group": "H 运营-订单全链路",
+      "name": "履约发货并校验订单 SHIPPED",
+      "method": "POST",
+      "path": "/commerce/admin/fulfillment/ship",
+      "status": "PASS",
+      "durationMs": 247,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/ship?fulfillmentId=10&carrierCode=DHL&trackingNo=DHL1792854164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 161
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 85
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-011",
+      "group": "H 运营-订单全链路",
+      "name": "运单列表",
+      "method": "GET",
+      "path": "/commerce/admin/shipment/list",
+      "status": "PASS",
+      "durationMs": 39,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/list?fulfillmentId=10&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-012",
+      "group": "H 运营-订单全链路",
+      "name": "运单详情含 trackingEvents",
+      "method": "GET",
+      "path": "/commerce/admin/shipment/{shipmentId}",
+      "status": "PASS",
+      "durationMs": 42,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 42
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-013",
+      "group": "H 运营-订单全链路",
+      "name": "追加轨迹 IN_TRANSIT",
+      "method": "POST",
+      "path": "/commerce/admin/shipment/track",
+      "status": "PASS",
+      "durationMs": 109,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/track",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 52
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 57
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-014",
+      "group": "H 运营-订单全链路",
+      "name": "运单签收并校验订单 DELIVERED",
+      "method": "POST",
+      "path": "/commerce/admin/shipment/deliver/{shipmentId}",
+      "status": "PASS",
+      "durationMs": 151,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/deliver/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 84
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 66
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-015",
+      "group": "H 运营-订单全链路",
+      "name": "订单完成 COMPLETED",
+      "method": "POST",
+      "path": "/commerce/admin/order/complete/{orderId}",
+      "status": "PASS",
+      "durationMs": 131,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/complete/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 74
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 57
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-016",
+      "group": "H 运营-订单全链路",
+      "name": "发起部分退款（实付 10%）",
+      "method": "POST",
+      "path": "/commerce/admin/refund",
+      "status": "PASS",
+      "durationMs": 239,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/refund",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 127
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 110
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-017",
+      "group": "H 运营-订单全链路",
+      "name": "退款审核通过并完成",
+      "method": "POST",
+      "path": "/commerce/admin/refund/approve/{refundId}",
+      "status": "PASS",
+      "durationMs": 1754,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/refund/approve/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 163
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/refund/complete/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 309
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/refund/18",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 556
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 725
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-018",
+      "group": "H 运营-订单全链路",
+      "name": "未支付订单完成被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/order/complete/{orderId}",
+      "status": "PASS",
+      "durationMs": 602,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 407
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/complete/91",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "订单状态不允许从 PENDING_PAYMENT 流转到 COMPLETED",
+          "error": null,
+          "durationMs": 61
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/cancel/91?reason=%E7%94%A8%E4%BE%8B%E6%B8%85%E7%90%86",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 132
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-ORDER-019",
+      "group": "H 运营-订单全链路",
+      "name": "订单取消并释放库存锁定",
+      "method": "POST",
+      "path": "/commerce/admin/order/cancel/{orderId}",
+      "status": "PASS",
+      "durationMs": 630,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=1&pageNum=1&pageSize=100",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 60
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 240
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=1&pageNum=1&pageSize=100",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 41
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/cancel/92?reason=API+%E5%8F%96%E6%B6%88+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 115
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/92",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 57
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=1&pageNum=1&pageSize=100",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 48
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/transactions?bizNo=NC-20261024230303172409486&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 66
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-INVENTORY-001",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "库存列表",
+      "method": "GET",
+      "path": "/commerce/admin/inventory/list",
+      "status": "PASS",
+      "durationMs": 52,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 52
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-INVENTORY-002",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "库存详情",
+      "method": "GET",
+      "path": "/commerce/admin/inventory/{inventoryId}",
+      "status": "PASS",
+      "durationMs": 83,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=1&pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 49
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/4",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 33
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-INVENTORY-003",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "库存流水",
+      "method": "GET",
+      "path": "/commerce/admin/inventory/transactions",
+      "status": "PASS",
+      "durationMs": 62,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/transactions?skuId=1&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 61
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-INVENTORY-004",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "手工调整库存 +10 并读回",
+      "method": "POST",
+      "path": "/commerce/admin/inventory/adjust",
+      "status": "PASS",
+      "durationMs": 333,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=5&warehouseCode=SG-SIN&pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 67
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=5&warehouseCode=SG-SIN&delta=10&remark=API+%2B10+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 70
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=5&warehouseCode=SG-SIN&pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 56
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=5&warehouseCode=SG-SIN&delta=-10&remark=API+%E6%81%A2%E5%A4%8D+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 64
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=5&warehouseCode=SG-SIN&pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 74
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-INVENTORY-005",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "新增库存记录",
+      "method": "POST",
+      "path": "/commerce/admin/inventory",
+      "status": "PASS",
+      "durationMs": 100,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 44
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=22&warehouseCode=API-WH&pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 56
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-FULFILLMENT-001",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "履约单列表",
+      "method": "GET",
+      "path": "/commerce/admin/fulfillment/list",
+      "status": "PASS",
+      "durationMs": 54,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 53
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-FULFILLMENT-002",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "履约单详情",
+      "method": "GET",
+      "path": "/commerce/admin/fulfillment/{fulfillmentId}",
+      "status": "PASS",
+      "durationMs": 47,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/fulfillment/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 46
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-SHIPMENT-001",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "运单列表",
+      "method": "GET",
+      "path": "/commerce/admin/shipment/list",
+      "status": "PASS",
+      "durationMs": 48,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 48
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-SHIPMENT-002",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "运单详情",
+      "method": "GET",
+      "path": "/commerce/admin/shipment/{shipmentId}",
+      "status": "PASS",
+      "durationMs": 59,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/shipment/10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-DASHBOARD-001",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "运营看板汇总",
+      "method": "GET",
+      "path": "/commerce/admin/dashboard/summary",
+      "status": "PASS",
+      "durationMs": 93,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/dashboard/summary",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 92
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-RECONCILIATION-001",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "对账汇总",
+      "method": "GET",
+      "path": "/commerce/admin/reconciliation/summary",
+      "status": "PASS",
+      "durationMs": 41,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/reconciliation/summary",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 40
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-RECONCILIATION-002",
+      "group": "I 运营-库存/履约/物流/看板/对账",
+      "name": "对账明细列表",
+      "method": "GET",
+      "path": "/commerce/admin/reconciliation/list",
+      "status": "PASS",
+      "durationMs": 73,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/reconciliation/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 71
+        }
+      ]
+    },
+    {
+      "id": "SHOP-DASHBOARD-001",
+      "group": "J 店铺端",
+      "name": "店铺工作台汇总",
+      "method": "GET",
+      "path": "/commerce/shop/dashboard/summary",
+      "status": "PASS",
+      "durationMs": 96,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/dashboard/summary",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 96
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PRODUCT-001",
+      "group": "J 店铺端",
+      "name": "店铺商品列表",
+      "method": "GET",
+      "path": "/commerce/shop/product/list",
+      "status": "PASS",
+      "durationMs": 176,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 175
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PRODUCT-002",
+      "group": "J 店铺端",
+      "name": "店铺商品详情",
+      "method": "GET",
+      "path": "/commerce/shop/product/{spuId}",
+      "status": "PASS",
+      "durationMs": 310,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 310
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PRODUCT-003",
+      "group": "J 店铺端",
+      "name": "店铺商品 SKU 列表",
+      "method": "GET",
+      "path": "/commerce/shop/product/sku/list",
+      "status": "PASS",
+      "durationMs": 66,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/sku/list?spuId=1&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 66
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PRODUCT-004",
+      "group": "J 店铺端",
+      "name": "店铺商品上下架",
+      "method": "POST",
+      "path": "/commerce/shop/product/status",
+      "status": "PASS",
+      "durationMs": 303,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/status?spuId=1&status=SUSPENDED",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 71
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 55
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/status?spuId=1&status=ON_SALE",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 84
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/product/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 43
+        }
+      ]
+    },
+    {
+      "id": "SHOP-ORDER-001",
+      "group": "J 店铺端",
+      "name": "店铺订单列表",
+      "method": "GET",
+      "path": "/commerce/shop/order/list",
+      "status": "PASS",
+      "durationMs": 78,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/order/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 77
+        }
+      ]
+    },
+    {
+      "id": "SHOP-ORDER-002",
+      "group": "J 店铺端",
+      "name": "店铺订单详情",
+      "method": "GET",
+      "path": "/commerce/shop/order/{orderId}",
+      "status": "PASS",
+      "durationMs": 75,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/order/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 75
+        }
+      ]
+    },
+    {
+      "id": "SHOP-ORDER-003",
+      "group": "J 店铺端",
+      "name": "店铺取消订单",
+      "method": "POST",
+      "path": "/commerce/shop/order/cancel/{orderId}",
+      "status": "PASS",
+      "durationMs": 641,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 270
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/order/cancel/93?reason=%E5%BA%97%E9%93%BA+API+%E5%8F%96%E6%B6%88+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 234
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/93",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 133
+        }
+      ]
+    },
+    {
+      "id": "SHOP-LOGISTICS-001",
+      "group": "J 店铺端",
+      "name": "店铺物流列表",
+      "method": "GET",
+      "path": "/commerce/shop/logistics/list",
+      "status": "PASS",
+      "durationMs": 79,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/logistics/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 78
+        }
+      ]
+    },
+    {
+      "id": "SHOP-LOGISTICS-002",
+      "group": "J 店铺端",
+      "name": "店铺运单详情",
+      "method": "GET",
+      "path": "/commerce/shop/logistics/{shipmentId}",
+      "status": "PASS",
+      "durationMs": 66,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/logistics/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 65
+        }
+      ]
+    },
+    {
+      "id": "SHOP-LOGISTICS-003",
+      "group": "J 店铺端",
+      "name": "店铺录入物流轨迹",
+      "method": "POST",
+      "path": "/commerce/shop/logistics/track",
+      "status": "PASS",
+      "durationMs": 151,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/logistics/track",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 98
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/logistics/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 53
+        }
+      ]
+    },
+    {
+      "id": "SHOP-CUSTOMER-001",
+      "group": "J 店铺端",
+      "name": "店铺客户列表",
+      "method": "GET",
+      "path": "/commerce/shop/customer/list",
+      "status": "PASS",
+      "durationMs": 43,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/customer/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 42
+        }
+      ]
+    },
+    {
+      "id": "SHOP-REPORT-001",
+      "group": "J 店铺端",
+      "name": "店铺经营报表",
+      "method": "GET",
+      "path": "/commerce/shop/report/summary",
+      "status": "PASS",
+      "durationMs": 62,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/report/summary?days=7",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 61
+        }
+      ]
+    },
+    {
+      "id": "SHOP-MARKETING-001",
+      "group": "J 店铺端",
+      "name": "店铺促销列表",
+      "method": "GET",
+      "path": "/commerce/shop/marketing/promotion/list",
+      "status": "PASS",
+      "durationMs": 65,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 65
+        }
+      ]
+    },
+    {
+      "id": "SHOP-MARKETING-002",
+      "group": "J 店铺端",
+      "name": "店铺新增促销",
+      "method": "POST",
+      "path": "/commerce/shop/marketing/promotion",
+      "status": "PASS",
+      "durationMs": 159,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 66
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion/list?promotionCode=SHP-PROMO-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 91
+        }
+      ]
+    },
+    {
+      "id": "SHOP-MARKETING-003",
+      "group": "J 店铺端",
+      "name": "店铺更新促销",
+      "method": "PUT",
+      "path": "/commerce/shop/marketing/promotion",
+      "status": "PASS",
+      "durationMs": 178,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 73
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion/list?promotionCode=SHP-PROMO-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 104
+        }
+      ]
+    },
+    {
+      "id": "SHOP-MARKETING-004",
+      "group": "J 店铺端",
+      "name": "店铺删除促销",
+      "method": "DELETE",
+      "path": "/commerce/shop/marketing/promotion/{promotionIds}",
+      "status": "PASS",
+      "durationMs": 149,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion/20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 62
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/promotion/list?promotionCode=SHP-PROMO-1792854164482&pageNum=1&pageSize=20",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 85
+        }
+      ]
+    },
+    {
+      "id": "SHOP-MARKETING-005",
+      "group": "J 店铺端",
+      "name": "店铺优惠券列表",
+      "method": "GET",
+      "path": "/commerce/shop/marketing/coupon/list",
+      "status": "PASS",
+      "durationMs": 83,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/marketing/coupon/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PROFILE-001",
+      "group": "J 店铺端",
+      "name": "店铺资料查询",
+      "method": "GET",
+      "path": "/commerce/shop/profile",
+      "status": "PASS",
+      "durationMs": 45,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 45
+        }
+      ]
+    },
+    {
+      "id": "SHOP-PROFILE-002",
+      "group": "J 店铺端",
+      "name": "店铺资料更新",
+      "method": "PUT",
+      "path": "/commerce/shop/profile",
+      "status": "PASS",
+      "durationMs": 364,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 68
+        },
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 76
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 81
+        },
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 71
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/profile",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 68
+        }
+      ]
+    },
+    {
+      "id": "SHOP-SETTLEMENT-001",
+      "group": "J 店铺端",
+      "name": "店铺结算单列表",
+      "method": "GET",
+      "path": "/commerce/shop/settlement/list",
+      "status": "PASS",
+      "durationMs": 89,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/settlement/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 89
+        }
+      ]
+    },
+    {
+      "id": "SHOP-SETTLEMENT-002",
+      "group": "J 店铺端",
+      "name": "生成结算单",
+      "method": "POST",
+      "path": "/commerce/shop/settlement/generate",
+      "status": "PASS",
+      "durationMs": 98,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/settlement/generate?periodStart=2026-10-01&periodEnd=2026-10-24",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 98
+        }
+      ]
+    },
+    {
+      "id": "SHOP-SETTLEMENT-003",
+      "group": "J 店铺端",
+      "name": "结算单打款",
+      "method": "POST",
+      "path": "/commerce/shop/settlement/pay/{settlementId}",
+      "status": "PASS",
+      "durationMs": 112,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/shop/settlement/pay/12",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 63
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/settlement/list?status=PAID",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 47
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-DASHBOARD-001",
+      "group": "K 平台端",
+      "name": "平台驾驶舱汇总",
+      "method": "GET",
+      "path": "/commerce/platform/dashboard/summary",
+      "status": "PASS",
+      "durationMs": 74,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/dashboard/summary",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 73
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-001",
+      "group": "K 平台端",
+      "name": "平台店铺列表",
+      "method": "GET",
+      "path": "/commerce/platform/shop/list",
+      "status": "PASS",
+      "durationMs": 32,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 31
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-002",
+      "group": "K 平台端",
+      "name": "平台店铺详情",
+      "method": "GET",
+      "path": "/commerce/platform/shop/{shopId}",
+      "status": "PASS",
+      "durationMs": 29,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/1",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 28
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-003",
+      "group": "K 平台端",
+      "name": "平台新增店铺",
+      "method": "POST",
+      "path": "/commerce/platform/shop",
+      "status": "PASS",
+      "durationMs": 111,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 73
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/list?shopCode=SHOP-API-1792854164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 35
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-004",
+      "group": "K 平台端",
+      "name": "平台更新店铺",
+      "method": "PUT",
+      "path": "/commerce/platform/shop",
+      "status": "PASS",
+      "durationMs": 97,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 71
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 26
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-005",
+      "group": "K 平台端",
+      "name": "平台调整店铺状态",
+      "method": "POST",
+      "path": "/commerce/platform/shop/status",
+      "status": "PASS",
+      "durationMs": 87,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/status?shopId=11&status=SUSPENDED",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 38
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-SHOP-006",
+      "group": "K 平台端",
+      "name": "平台删除店铺",
+      "method": "DELETE",
+      "path": "/commerce/platform/shop/{shopIds}",
+      "status": "PASS",
+      "durationMs": 111,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/11",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 42
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/shop/list?shopCode=SHOP-API-1792854164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 69
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-USER-001",
+      "group": "K 平台端",
+      "name": "平台用户列表",
+      "method": "GET",
+      "path": "/commerce/platform/user/list",
+      "status": "PASS",
+      "durationMs": 31,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/user/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 30
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-AUDIT-001",
+      "group": "K 平台端",
+      "name": "平台审计日志列表",
+      "method": "GET",
+      "path": "/commerce/platform/audit/list",
+      "status": "PASS",
+      "durationMs": 45,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/audit/list?pageNum=1&pageSize=10",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 45
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CHANNEL-001",
+      "group": "K 平台端",
+      "name": "平台渠道配置列表",
+      "method": "GET",
+      "path": "/commerce/platform/channel/list",
+      "status": "PASS",
+      "durationMs": 37,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 37
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CHANNEL-002",
+      "group": "K 平台端",
+      "name": "平台新增渠道配置",
+      "method": "POST",
+      "path": "/commerce/platform/channel",
+      "status": "PASS",
+      "durationMs": 115,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 73
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel/list?channelCode=CH54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 40
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CHANNEL-003",
+      "group": "K 平台端",
+      "name": "平台更新渠道配置",
+      "method": "PUT",
+      "path": "/commerce/platform/channel",
+      "status": "PASS",
+      "durationMs": 117,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 66
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CHANNEL-004",
+      "group": "K 平台端",
+      "name": "平台删除渠道配置",
+      "method": "DELETE",
+      "path": "/commerce/platform/channel/{channelConfigIds}",
+      "status": "PASS",
+      "durationMs": 69,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel/13",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 42
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/channel/list?channelCode=CH54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 26
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CONFIG-001",
+      "group": "K 平台端",
+      "name": "平台设置列表",
+      "method": "GET",
+      "path": "/commerce/platform/config/list",
+      "status": "PASS",
+      "durationMs": 26,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/config/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 25
+        }
+      ]
+    },
+    {
+      "id": "PLATFORM-CONFIG-002",
+      "group": "K 平台端",
+      "name": "平台设置更新",
+      "method": "PUT",
+      "path": "/commerce/platform/config",
+      "status": "PASS",
+      "durationMs": 77,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/commerce/platform/config",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/platform/config/list",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 27
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-001",
+      "group": "L 买家端",
+      "name": "商品分类",
+      "method": "GET",
+      "path": "/api/storefront/categories",
+      "status": "PASS",
+      "durationMs": 26,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/categories",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 26
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-002",
+      "group": "L 买家端",
+      "name": "商品分页",
+      "method": "GET",
+      "path": "/api/storefront/products",
+      "status": "PASS",
+      "durationMs": 99,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/products?page=1&size=3",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 99
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-003",
+      "group": "L 买家端",
+      "name": "商品分类筛选",
+      "method": "GET",
+      "path": "/api/storefront/products",
+      "status": "PASS",
+      "durationMs": 84,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/products?category=audio&page=1&size=10",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 83
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-004",
+      "group": "L 买家端",
+      "name": "商品搜索",
+      "method": "GET",
+      "path": "/api/storefront/products",
+      "status": "PASS",
+      "durationMs": 88,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/products?q=NovaSound&page=1&size=10",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 88
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-005",
+      "group": "L 买家端",
+      "name": "商品价格升序排序",
+      "method": "GET",
+      "path": "/api/storefront/products",
+      "status": "PASS",
+      "durationMs": 142,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/products?sort=price-asc&page=1&size=10",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 141
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CATALOG-006",
+      "group": "L 买家端",
+      "name": "商品详情",
+      "method": "GET",
+      "path": "/api/storefront/products/{id}",
+      "status": "PASS",
+      "durationMs": 174,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/products/1",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 174
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AUTH-001",
+      "group": "L 买家端",
+      "name": "买家错误密码登录失败",
+      "method": "POST",
+      "path": "/api/storefront/login",
+      "status": "PASS",
+      "durationMs": 516,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/login",
+          "httpStatus": 200,
+          "code": 400,
+          "error": null,
+          "durationMs": 516
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AUTH-002",
+      "group": "L 买家端",
+      "name": "买家登录成功",
+      "method": "POST",
+      "path": "/api/storefront/login",
+      "status": "PASS",
+      "durationMs": 455,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/login",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 454
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AUTH-003",
+      "group": "L 买家端",
+      "name": "买家账户信息",
+      "method": "GET",
+      "path": "/api/storefront/account",
+      "status": "PASS",
+      "durationMs": 28,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/account",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 26
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-001",
+      "group": "L 买家端",
+      "name": "未登录访问购物车返回 401",
+      "method": "GET",
+      "path": "/api/storefront/cart",
+      "status": "PASS",
+      "durationMs": 13,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 401,
+          "error": null,
+          "durationMs": 13
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-002",
+      "group": "L 买家端",
+      "name": "买家加入购物车",
+      "method": "POST",
+      "path": "/api/storefront/cart",
+      "status": "PASS",
+      "durationMs": 126,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 126
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-003",
+      "group": "L 买家端",
+      "name": "买家修改购物车数量",
+      "method": "PUT",
+      "path": "/api/storefront/cart",
+      "status": "PASS",
+      "durationMs": 165,
+      "error": null,
+      "requests": [
+        {
+          "method": "PUT",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 60
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 104
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-004",
+      "group": "L 买家端",
+      "name": "买家购物车列表",
+      "method": "GET",
+      "path": "/api/storefront/cart",
+      "status": "PASS",
+      "durationMs": 121,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 120
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-005",
+      "group": "L 买家端",
+      "name": "买家删除购物车明细",
+      "method": "DELETE",
+      "path": "/api/storefront/cart/{cartItemId}",
+      "status": "PASS",
+      "durationMs": 138,
+      "error": null,
+      "requests": [
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/api/storefront/cart/35",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 81
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 56
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ADDRESS-001",
+      "group": "L 买家端",
+      "name": "买家地址列表",
+      "method": "GET",
+      "path": "/api/storefront/addresses",
+      "status": "PASS",
+      "durationMs": 30,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/addresses",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 30
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ADDRESS-002",
+      "group": "L 买家端",
+      "name": "买家新增地址",
+      "method": "POST",
+      "path": "/api/storefront/addresses",
+      "status": "PASS",
+      "durationMs": 54,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/addresses",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 53
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-001",
+      "group": "L 买家端",
+      "name": "买家创建 USD 订单",
+      "method": "POST",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 253,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 252
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-002",
+      "group": "L 买家端",
+      "name": "买家创建 EUR 订单",
+      "method": "POST",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 510,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 510
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-003",
+      "group": "L 买家端",
+      "name": "买家创建 CNY 订单",
+      "method": "POST",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 2408,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 2407
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-004",
+      "group": "L 买家端",
+      "name": "买家订单列表",
+      "method": "GET",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 109,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 105
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-005",
+      "group": "L 买家端",
+      "name": "买家订单详情",
+      "method": "GET",
+      "path": "/api/storefront/orders/{orderNo}",
+      "status": "PASS",
+      "durationMs": 87,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/orders/NC-20261024230311597736303",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 86
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-ORDER-006",
+      "group": "L 买家端",
+      "name": "买家支付 USD 订单",
+      "method": "POST",
+      "path": "/api/storefront/orders/{orderNo}/pay",
+      "status": "PASS",
+      "durationMs": 1311,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders/NC-20261024230311597736303/pay",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 1310
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AFTERSALE-001",
+      "group": "L 买家端",
+      "name": "买家申请售后",
+      "method": "POST",
+      "path": "/api/storefront/aftersales",
+      "status": "PASS",
+      "durationMs": 142,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/aftersales",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 142
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AFTERSALE-002",
+      "group": "L 买家端",
+      "name": "买家售后列表",
+      "method": "GET",
+      "path": "/api/storefront/aftersales",
+      "status": "PASS",
+      "durationMs": 32,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/aftersales",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 31
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-CART-006",
+      "group": "L 买家端",
+      "name": "购物车币种跟随结算币种",
+      "method": "GET",
+      "path": "/api/storefront/cart",
+      "status": "PASS",
+      "durationMs": 1351,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/cart",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 241
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/cart?currency=EUR",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 469
+        },
+        {
+          "method": "DELETE",
+          "url": "http://127.0.0.1:8080/api/storefront/cart/36",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 640
+        }
+      ]
+    },
+    {
+      "id": "STOREFRONT-AUTH-004",
+      "group": "L 买家端",
+      "name": "买家登出后访问账户返回 401",
+      "method": "POST",
+      "path": "/api/storefront/logout",
+      "status": "PASS",
+      "durationMs": 115,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/logout",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 90
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/api/storefront/account",
+          "httpStatus": 200,
+          "code": 401,
+          "error": null,
+          "durationMs": 24
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-001",
+      "group": "M 边界与业务规则",
+      "name": "划线价低于销售价被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/price",
+      "status": "PASS",
+      "durationMs": 74,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/price",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "销售价不能高于划线价",
+          "error": null,
+          "durationMs": 74
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-002",
+      "group": "M 边界与业务规则",
+      "name": "SKU 不存在下单失败",
+      "method": "POST",
+      "path": "/commerce/admin/order",
+      "status": "PASS",
+      "durationMs": 51,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "SKU 不存在：999999999",
+          "error": null,
+          "durationMs": 50
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-003",
+      "group": "M 边界与业务规则",
+      "name": "库存不足下单失败（调整到极小后恢复）",
+      "method": "POST",
+      "path": "/commerce/admin/order",
+      "status": "PASS",
+      "durationMs": 1382,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/list?skuId=7&pageNum=1&pageSize=50",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "查询成功",
+          "error": null,
+          "durationMs": 73
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=CN-SZ&delta=-2099&remark=API+%E5%BA%93%E5%AD%98%E5%8E%8B%E6%B5%8B+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 83
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=SG-SIN&delta=-179&remark=API+%E5%BA%93%E5%AD%98%E5%8E%8B%E6%B5%8B+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 63
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=DE-FRA&delta=-259&remark=API+%E5%BA%93%E5%AD%98%E5%8E%8B%E6%B5%8B+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 65
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=US-WEST&delta=-419&remark=API+%E5%BA%93%E5%AD%98%E5%8E%8B%E6%B5%8B+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 124
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "SKU 7 可用库存不足，需锁定 2",
+          "error": null,
+          "durationMs": 164
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=CN-SZ&delta=2099&remark=API+%E5%BA%93%E5%AD%98%E6%81%A2%E5%A4%8D+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 325
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=SG-SIN&delta=179&remark=API+%E5%BA%93%E5%AD%98%E6%81%A2%E5%A4%8D+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 341
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=DE-FRA&delta=259&remark=API+%E5%BA%93%E5%AD%98%E6%81%A2%E5%A4%8D+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 76
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/inventory/adjust?skuId=7&warehouseCode=US-WEST&delta=419&remark=API+%E5%BA%93%E5%AD%98%E6%81%A2%E5%A4%8D+54164482",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 65
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-004",
+      "group": "M 边界与业务规则",
+      "name": "退款超过实付金额被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/refund",
+      "status": "PASS",
+      "durationMs": 60,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/refund",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "累计退款金额不能超过订单实付金额",
+          "error": null,
+          "durationMs": 59
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-005",
+      "group": "M 边界与业务规则",
+      "name": "重复支付回调幂等（同 providerEventId）",
+      "method": "POST",
+      "path": "/commerce/admin/payment/callback",
+      "status": "PASS",
+      "durationMs": 762,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 273
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment/callback",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 312
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment/callback",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 50
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/98",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 76
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/payment/events/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 49
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-006",
+      "group": "M 边界与业务规则",
+      "name": "外部渠道订单 externalOrderId 幂等",
+      "method": "POST",
+      "path": "/commerce/admin/order/external",
+      "status": "PASS",
+      "durationMs": 1123,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/external",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 232
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/external",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 890
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-007",
+      "group": "M 边界与业务规则",
+      "name": "优惠券未达门槛被拒绝",
+      "method": "POST",
+      "path": "/commerce/admin/order",
+      "status": "PASS",
+      "durationMs": 146,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/coupon",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 51
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "订单金额未达到优惠券使用门槛",
+          "error": null,
+          "durationMs": 93
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-008",
+      "group": "M 边界与业务规则",
+      "name": "订单快照包含跨境申报字段",
+      "method": "GET",
+      "path": "/commerce/admin/order/{orderId}",
+      "status": "PASS",
+      "durationMs": 517,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/90",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 515
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-009",
+      "group": "M 边界与业务规则",
+      "name": "跨店铺商品混合下单被拒绝",
+      "method": "POST",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 856,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/login",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 761
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 400,
+          "error": null,
+          "durationMs": 94
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-010",
+      "group": "M 边界与业务规则",
+      "name": "订单归属商品实际所属店铺",
+      "method": "POST",
+      "path": "/api/storefront/orders",
+      "status": "PASS",
+      "durationMs": 486,
+      "error": null,
+      "requests": [
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/api/storefront/orders",
+          "httpStatus": 200,
+          "code": 0,
+          "error": null,
+          "durationMs": 247
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/100",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 238
+        }
+      ]
+    },
+    {
+      "id": "BOUNDARY-011",
+      "group": "M 边界与业务规则",
+      "name": "店铺端不能查看其他店铺订单",
+      "method": "GET",
+      "path": "/commerce/shop/order/{orderId}",
+      "status": "PASS",
+      "durationMs": 189,
+      "error": null,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:8080/commerce/shop/order/100",
+          "httpStatus": 200,
+          "code": 500,
+          "msg": "无权访问该订单",
+          "error": null,
+          "durationMs": 74
+        },
+        {
+          "method": "POST",
+          "url": "http://127.0.0.1:8080/commerce/admin/order/cancel/100?reason=%E5%9B%9E%E5%BD%92%E6%B5%8B%E8%AF%95%E6%B8%85%E7%90%86",
+          "httpStatus": 200,
+          "code": 200,
+          "msg": "操作成功",
+          "error": null,
+          "durationMs": 115
+        }
+      ]
+    }
+  ]
+}
